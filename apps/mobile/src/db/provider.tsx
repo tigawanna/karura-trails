@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Text, useTheme } from "react-native-paper";
 
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
+
+import { getDatabaseErrorContent } from "./error-content";
 import { initializeDatabase } from "./init";
 import { seedTrailsFromGeoJSON } from "./seed";
 import type { TrailFeatureCollection } from "@/types/geojson";
@@ -25,9 +27,12 @@ interface DatabaseProviderProps {
 export function DatabaseProvider({ children }: DatabaseProviderProps) {
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { colors } = useTheme();
+  const [initAttempt, setInitAttempt] = useState(0);
 
   useEffect(() => {
+    setError(null);
+    setIsReady(false);
+
     try {
       initializeDatabase();
       seedTrailsFromGeoJSON(trailsGeoJSON as unknown as TrailFeatureCollection);
@@ -36,33 +41,26 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
       const message = err instanceof Error ? err.message : "Failed to initialize database";
       setError(message);
     }
-  }, []);
+  }, [initAttempt]);
 
   if (error) {
+    const content = getDatabaseErrorContent(error);
+
     return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <Text style={{ color: colors.error }}>Database Error</Text>
-        <Text style={{ color: colors.onSurface, marginTop: 8 }}>{error}</Text>
-      </View>
+      <ErrorState
+        testID="database-error"
+        title={content.title}
+        message={content.message}
+        hint={content.hint}
+        details={error}
+        onRetry={() => setInitAttempt((attempt) => attempt + 1)}
+      />
     );
   }
 
   if (!isReady) {
-    return (
-      <View style={[styles.center, { backgroundColor: colors.background }]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={{ color: colors.onSurface, marginTop: 12 }}>Preparing trails...</Text>
-      </View>
-    );
+    return <LoadingState testID="database-loading" message="Preparing trails…" />;
   }
 
   return <DatabaseContext.Provider value={{ isReady }}>{children}</DatabaseContext.Provider>;
 }
-
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-});
