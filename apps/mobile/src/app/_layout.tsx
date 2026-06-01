@@ -8,6 +8,7 @@ import { useThemeSetup } from "@/theme";
 
 export default function TabLayout() {
   const { colorScheme, paperTheme, isDarkMode } = useThemeSetup();
+
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <PaperProvider theme={paperTheme}>
