@@ -44,6 +44,7 @@ const getPlugins = (bundleId: UniqueIdentifier) => {
     "expo-status-bar",
     "expo-web-browser",
     "@maplibre/maplibre-react-native",
+    "./plugins/opsqlite-spatialite/with-spatialite",
     [
       "expo-location",
       {

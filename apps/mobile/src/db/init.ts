@@ -1,4 +1,5 @@
 import { getDb } from "./client";
+import { ensureSpatialGeometry, initSpatialMetadata } from "./spatial-setup";
 
 const CREATE_PATHS = `
   CREATE TABLE IF NOT EXISTS paths (
@@ -16,7 +17,6 @@ const CREATE_PATHS = `
     min_elevation REAL,
     max_elevation REAL,
     vertex_count INTEGER,
-    geom BLOB,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -34,7 +34,6 @@ const CREATE_POINTS = `
     nearest_path_id INTEGER REFERENCES paths(id),
     nearest_path_name TEXT,
     nearest_path_distance REAL,
-    geom BLOB,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -64,7 +63,6 @@ const CREATE_HIKES = `
     total_elevation_loss REAL,
     duration_seconds INTEGER,
     status TEXT NOT NULL DEFAULT 'planned',
-    geom BLOB,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `;
@@ -82,7 +80,7 @@ const CREATE_HIKE_WAYPOINTS = `
 export function initializeDatabase(): void {
   const rawDb = getDb();
 
-  rawDb.executeSync("SELECT InitSpatialMetaData(1);");
+  initSpatialMetadata(rawDb);
 
   rawDb.executeSync(CREATE_PATHS);
   rawDb.executeSync(CREATE_POINTS);
@@ -90,27 +88,7 @@ export function initializeDatabase(): void {
   rawDb.executeSync(CREATE_HIKES);
   rawDb.executeSync(CREATE_HIKE_WAYPOINTS);
 
-  try {
-    rawDb.executeSync("SELECT RecoverGeometryColumn('paths', 'geom', 4326, 'LINESTRINGZ', 'XYZ');");
-  } catch {
-    // Column may already be registered
-  }
-
-  try {
-    rawDb.executeSync("SELECT CreateSpatialIndex('paths', 'geom');");
-  } catch {
-    // Index may already exist
-  }
-
-  try {
-    rawDb.executeSync("SELECT RecoverGeometryColumn('points', 'geom', 4326, 'POINTZ', 'XYZ');");
-  } catch {
-    // Column may already be registered
-  }
-
-  try {
-    rawDb.executeSync("SELECT CreateSpatialIndex('points', 'geom');");
-  } catch {
-    // Index may already exist
-  }
+  ensureSpatialGeometry(rawDb, "paths", "geom", 4326, "LINESTRINGZ", "XYZ");
+  ensureSpatialGeometry(rawDb, "points", "geom", 4326, "POINTZ", "XYZ");
+  ensureSpatialGeometry(rawDb, "hikes", "geom", 4326, "LINESTRINGZ", "XYZ");
 }

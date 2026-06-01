@@ -1,5 +1,8 @@
 import { getDb } from "./client";
+import { logCapturedError } from "@/lib/log-captured-error";
 import type { TrailFeatureCollection } from "@/types/geojson";
+
+const SEED_SOURCE = "src/db/seed.ts";
 
 interface TrailStats {
   distanceMeters: number;
@@ -72,7 +75,9 @@ export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
   const rawDb = getDb();
 
   const existingResult = rawDb.executeSync("SELECT COUNT(*) as count FROM paths;");
-  const existingCount = (existingResult.rows[0] as Record<string, number> | undefined)?.count ?? 0;
+  const firstRow = existingResult.rows?.[0];
+  const existingCount =
+    firstRow && typeof firstRow === "object" && "count" in firstRow ? Number(firstRow.count) : 0;
 
   if (existingCount > 0) {
     return existingCount;
@@ -84,7 +89,12 @@ export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
     let inserted = 0;
 
     for (const feature of geojson.features) {
-      const { slug, name, source, vertexCount } = feature.properties;
+      const properties = feature.properties;
+      if (!properties) {
+        throw new Error(`Trail feature is missing properties: ${String(feature.id ?? "unknown")}`);
+      }
+
+      const { slug, name, source, vertexCount } = properties;
       const coords = feature.geometry.coordinates;
       const stats = computeTrailStats(coords);
 
@@ -118,8 +128,13 @@ export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
 
     rawDb.executeSync("COMMIT;");
     return inserted;
-  } catch (error) {
+  } catch (error: unknown) {
     rawDb.executeSync("ROLLBACK;");
+    logCapturedError("Seed", error, {
+      source: SEED_SOURCE,
+      phase: "seedTrailsFromGeoJSON",
+      extra: { featureCount: geojson.features.length },
+    });
     throw error;
   }
 }

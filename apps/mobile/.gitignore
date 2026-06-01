@@ -41,3 +41,8 @@ example
 # generated native folders
 /ios
 /android
+
+# SpatiaLite prebuild artifacts (pnpm fetch:spatialite)
+plugins/opsqlite-spatialite/spatialite-libs/
+spatialite-libs/
+.cache/spatialite-downloads/

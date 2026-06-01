@@ -3,12 +3,15 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 
+import { getErrorMessage, logCapturedError } from "@/lib/log-captured-error";
+
 import { getDatabaseErrorContent } from "./error-content";
 import { initializeDatabase } from "./init";
-import { seedTrailsFromGeoJSON } from "./seed";
-import type { TrailFeatureCollection } from "@/types/geojson";
+import { loadTrailsGeoJSON } from "@/lib/parse-trails-geojson";
 
-import trailsGeoJSON from "../../assets/data/trails.geojson";
+import { seedTrailsFromGeoJSON } from "./seed";
+
+const PROVIDER_SOURCE = "src/db/provider.tsx";
 
 interface DatabaseContextValue {
   isReady: boolean;
@@ -33,13 +36,20 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
     setError(null);
     setIsReady(false);
 
+    let phase = "initializeDatabase";
+
     try {
       initializeDatabase();
-      seedTrailsFromGeoJSON(trailsGeoJSON as unknown as TrailFeatureCollection);
+      phase = "seedTrailsFromGeoJSON";
+      seedTrailsFromGeoJSON(loadTrailsGeoJSON());
       setIsReady(true);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Failed to initialize database";
-      setError(message);
+      logCapturedError("DatabaseProvider", err, {
+        source: PROVIDER_SOURCE,
+        phase,
+        extra: { initAttempt },
+      });
+      setError(getErrorMessage(err, "Failed to initialize database"));
     }
   }, [initAttempt]);
 

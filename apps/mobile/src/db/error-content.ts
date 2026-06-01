@@ -10,7 +10,7 @@ export function getDatabaseErrorContent(rawError: string): DatabaseErrorContent 
       title: "Development build required",
       message:
         "Trail data uses SpatiaLite, which is not available in Expo Go. Install a dev client that includes the native database libraries.",
-      hint: "From apps/mobile, run pnpm run:android or pnpm build-dev:local, then open the app in that build instead of Expo Go.",
+      hint: "From apps/mobile, run pnpm fetch:spatialite, then pnpm prebuild:android and pnpm run:android. Do not use Expo Go.",
     };
   }
 

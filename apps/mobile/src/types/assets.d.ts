@@ -1,4 +1,6 @@
 declare module "*.geojson" {
-  const value: Record<string, unknown>;
+  import type { TrailFeatureCollection } from "./geojson";
+
+  const value: TrailFeatureCollection | string;
   export default value;
 }
