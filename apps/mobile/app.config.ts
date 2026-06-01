@@ -43,6 +43,16 @@ const getPlugins = (bundleId: UniqueIdentifier) => {
     "expo-font",
     "expo-status-bar",
     "expo-web-browser",
+    "@maplibre/maplibre-react-native",
+    [
+      "expo-location",
+      {
+        locationAlwaysAndWhenInUsePermission:
+          "Allow Karura Trails to use your location to show where you are on the map.",
+        locationWhenInUsePermission:
+          "Allow Karura Trails to use your location to show where you are on the map.",
+      },
+    ],
     [
       "expo-splash-screen",
       {

@@ -4,6 +4,17 @@ Read Expo v56 docs before changing APIs: https://docs.expo.dev/versions/v56.0.0/
 
 **Stack:** Expo Router (`src/app/`), React 19 / RN (New Arch), react-native-paper + `src/theme/`, strict TS, `@/` alias. Prefer `pnpm dev` (Expo Go) before dev builds / EAS.
 
+**Data stack:** op-sqlite + SpatiaLite (`src/db/`), Drizzle ORM (sqlite-proxy), MapLibre React Native v11 (`src/components/map/`), TanStack Query, expo-location.
+
+**Key conventions:**
+
+- Database schema in `src/db/schema/`; spatial types in `src/db/spatial-types.ts`
+- Always use `AsGeoJSON(geom)` when reading geometry columns — never raw BLOB
+- Use `executeQuerySync()` for spatial SQL not expressible via Drizzle
+- Map components in `src/components/map/`; MapLibre v11 uses `Map`, `Camera`, `GeoJSONSource`, `Layer`
+- Types in `src/types/`; services in `src/services/{domain}/`
+- GeoJSON utilities in `src/lib/map-libre/`
+
 ## Mobile
 
 ### Do

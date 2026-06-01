@@ -8,5 +8,6 @@
       "@/assets/*": ["./assets/*"]
     }
   },
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js"],
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }
