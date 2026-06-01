@@ -1,7 +1,22 @@
 {
   "name": "mobile",
-  "main": "expo-router/entry",
   "version": "1.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "reset-project": "node ./scripts/reset-project.js",
+    "android": "expo run:android",
+    "run:android": "expo run:android",
+    "ios": "expo run:ios",
+    "run:ios": "expo run:ios",
+    "web": "expo start --web",
+    "prebuild": "expo prebuild --clean",
+    "prebuild:android": "expo prebuild -p android --clean",
+    "prebuild:ios": "expo prebuild -p ios --clean",
+    "lint": "expo lint",
+    "check-types": "tsgo --noEmit"
+  },
   "dependencies": {
     "@expo/ui": "~56.0.15",
     "deepmerge": "^4.3.1",
@@ -32,21 +47,8 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "@typescript/native-preview": "7.0.0-dev.20260519.1",
     "expo-modules-core": "^56.0.14",
-    "typescript": "~6.0.3"
-  },
-  "scripts": {
-    "start": "expo start",
-    "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo run:android",
-    "run:android": "expo run:android",
-    "ios": "expo run:ios",
-    "run:ios": "expo run:ios",
-    "web": "expo start --web",
-    "prebuild": "expo prebuild --clean",
-    "prebuild:android": "expo prebuild -p android --clean",
-    "prebuild:ios": "expo prebuild -p ios --clean",
-    "lint": "expo lint"
-  },
-  "private": true
+    "typescript": "6.0.3"
+  }
 }

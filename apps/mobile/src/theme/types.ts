@@ -1,4 +1,4 @@
-type ElevationLevel = 'level0' | 'level1' | 'level2' | 'level3' | 'level4' | 'level5';
+type ElevationLevel = "level0" | "level1" | "level2" | "level3" | "level4" | "level5";
 
 export type ElevationColors = {
   [key in ElevationLevel]: string;
