@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import AppTabs from "@/components/app-tabs";
-import { InitDatabase } from "@/db/InitDatabase";
+import { InitDatabase } from "@/lib/drizzle/InitDatabase";
 import { useThemeSetup } from "@/theme";
 
 const queryClient = new QueryClient({
