@@ -5,7 +5,7 @@ import { useMigrations } from "drizzle-orm/op-sqlite/migrator";
 import { useEffect, useState } from "react";
 import { db, ensureSpatialMetadata } from "./client";
 import { seedTrailsFromGeoJSON } from "./seed";
-import { loadTrailsGeoJSON } from "../parse-trails-geojson";
+import { loadTrailsGeoJSON } from "../geojson/parse-trails-geojson";
 
 interface InitDatabaseProps {
   children?: React.ReactNode;

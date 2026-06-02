@@ -9,6 +9,7 @@ Read Expo v56 docs before changing APIs: https://docs.expo.dev/versions/v56.0.0/
 **Key conventions:**
 
 - Database schema in `src/lib/drizzle/schema/`; spatial types in `src/lib/drizzle/spatial-types.ts`
+- SpatiaLite reference: `docs/SPATIALITE.md` (setup, inserts, queries, troubleshooting)
 - Always use `AsGeoJSON(geom)` when reading geometry columns — never raw BLOB
 - Use `executeQuerySync()` for spatial SQL not expressible via Drizzle
 - Map components in `src/components/map/`; MapLibre v11 uses `Map`, `Camera`, `GeoJSONSource`, `Layer`
