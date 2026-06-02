@@ -1,11 +1,13 @@
-import React, { useMemo, useState } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { Camera, Map } from "@maplibre/maplibre-react-native";
 
+import { MapBasemapToggle } from "./map-basemap-toggle";
 import { TrailLayer } from "./trail-layer";
 import { UserLocationLayer } from "./user-location-layer";
 import { useDeviceLocation } from "@/hooks/use-device-location";
+import { useMapBasemapPreference } from "@/hooks/use-map-basemap-preference";
 import {
   calculateBBox,
   combineBBoxes,
@@ -13,15 +15,27 @@ import {
   bboxToZoom,
   geomParse,
 } from "@/lib/map-libre/geom-parse";
-import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM, OPENFREEMAP_POSITRON_STYLE } from "@/types/map";
+import {
+  KARURA_FOREST_CENTER,
+  KARURA_DEFAULT_ZOOM,
+  normalizeMapColorScheme,
+  resolveMapStyle,
+} from "@/types/map";
 import { useTrails } from "@/hooks/use-trails";
 
 export function KaruraMap() {
   const { colors } = useTheme();
+  const colorScheme = normalizeMapColorScheme(useColorScheme());
+  const { preset, setPreset, isReady: basemapReady } = useMapBasemapPreference();
+  const mapStyle = resolveMapStyle(preset, colorScheme);
   const { location } = useDeviceLocation();
   const [mapReady, setMapReady] = useState(false);
 
   const { data: trails, isLoading: trailsLoading } = useTrails();
+
+  useEffect(() => {
+    setMapReady(false);
+  }, [mapStyle]);
 
   const camera = useMemo(() => {
     if (!trails || trails.length === 0) {
@@ -52,7 +66,7 @@ export function KaruraMap() {
 
   return (
     <View style={styles.container}>
-      {trailsLoading && (
+      {(trailsLoading || !basemapReady) && (
         <View
           style={[
             StyleSheet.absoluteFill,
@@ -61,25 +75,31 @@ export function KaruraMap() {
           ]}
         >
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ color: colors.onSurface, marginTop: 8 }}>Loading trails...</Text>
+          <Text style={{ color: colors.onSurface, marginTop: 8 }}>
+            {!basemapReady ? "Loading map…" : "Loading trails…"}
+          </Text>
         </View>
       )}
-      <Map
-        style={styles.map}
-        mapStyle={OPENFREEMAP_POSITRON_STYLE}
-        onDidFinishLoadingMap={() => setMapReady(true)}
-      >
-        <Camera center={camera.center} zoom={camera.zoom} duration={camera.duration} />
+      {basemapReady ? (
+        <Map style={styles.map} mapStyle={mapStyle} onDidFinishLoadingMap={() => setMapReady(true)}>
+          <Camera center={camera.center} zoom={camera.zoom} duration={camera.duration} />
 
-        {trails && trails.length > 0 && <TrailLayer trails={trails} />}
+          {trails && trails.length > 0 && <TrailLayer trails={trails} />}
 
-        {location && (
-          <UserLocationLayer
-            longitude={location.coords.longitude}
-            latitude={location.coords.latitude}
-          />
-        )}
-      </Map>
+          {location && (
+            <UserLocationLayer
+              longitude={location.coords.longitude}
+              latitude={location.coords.latitude}
+            />
+          )}
+        </Map>
+      ) : null}
+
+      {basemapReady ? (
+        <View style={styles.mapOverlay} pointerEvents="box-none">
+          <MapBasemapToggle preset={preset} onPresetChange={setPreset} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -90,6 +110,11 @@ const styles = StyleSheet.create({
   },
   map: {
     flex: 1,
+  },
+  mapOverlay: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 20,
+    elevation: 20,
   },
   loadingOverlay: {
     justifyContent: "center",
