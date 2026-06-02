@@ -2,8 +2,8 @@ import React, { useMemo } from "react";
 import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 import { useTheme } from "react-native-paper";
 
-import { geomParse, isValidLineString } from "@/lib/map-libre/geom-parse";
-import type { TrailWithGeometry } from "@/types/trail";
+import type { TrailWithGeometry } from "@/data-access-layer/trails";
+import { geomParse, isValidLineString } from "@/geo/geom-parse";
 
 interface TrailLayerProps {
   trails: TrailWithGeometry[];

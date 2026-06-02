@@ -7,9 +7,8 @@ import {
   formatTrailDistance,
   formatTrailElevation,
 } from "@/lib/format-trail-stats";
-import type { PathSelect } from "@/lib/drizzle/schema";
+import type { PathSelect, TrailDifficulty } from "@/lib/drizzle/schema";
 import { MaxContentWidth, Spacing, useTheme as useAppTheme } from "@/theme";
-import type { TrailDifficulty } from "@/types/trail";
 
 export type TrailCardProps = {
   trail: PathSelect;

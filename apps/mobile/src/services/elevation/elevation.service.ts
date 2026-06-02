@@ -1,5 +1,20 @@
 import { executeQuerySync } from "@/lib/drizzle/client";
-import type { ElevationInference } from "@/types/trail";
+
+export type ElevationSource = "gps" | "inferred_from_path" | "manual";
+
+export interface TrailElevationProfile {
+  distance: number;
+  elevation: number;
+}
+
+export interface ElevationInference {
+  elevation: number;
+  source: ElevationSource;
+  nearestPathId: number;
+  nearestPathName: string;
+  distanceToPath: number;
+  positionOnPath: number;
+}
 
 interface NearestPathRow {
   id: number;

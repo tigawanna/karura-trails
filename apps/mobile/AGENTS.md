@@ -1,3 +1,8 @@
+# general
+
+- Do not use a global `src/types/` bucket for domain types. Export types from the module they belong to (lib, service, feature folder) and prefer colocation over remote re-exports.
+- `src/types/` is only for ambient declarations (e.g. `assets.d.ts`), not shared domain models.
+
 # Mobile App — Agent Instructions
 
 Read Expo v56 docs before changing APIs: https://docs.expo.dev/versions/v56.0.0/
@@ -13,8 +18,9 @@ Read Expo v56 docs before changing APIs: https://docs.expo.dev/versions/v56.0.0/
 - Always use `AsGeoJSON(geom)` when reading geometry columns — never raw BLOB
 - Use `executeQuerySync()` for spatial SQL not expressible via Drizzle
 - Map components in `src/components/map/`; MapLibre v11 uses `Map`, `Camera`, `GeoJSONSource`, `Layer`
-- Types in `src/types/`; services in `src/services/{domain}/`
-- GeoJSON utilities in `src/lib/map-libre/`
+- Services in `src/services/{domain}/`
+- Geo/spatial types and GeoJSON helpers in `src/geo/` (not `src/types/`)
+- MapLibre style helpers in `src/lib/map-libre/`
 
 ## Mobile
 
@@ -31,6 +37,7 @@ Read Expo v56 docs before changing APIs: https://docs.expo.dev/versions/v56.0.0/
 ### Don't
 
 - Co-locate components, hooks, or utils in `src/app/`
+- Park domain types in `src/types/` or re-export through `src/types/index.ts`
 - Dead routes, skipped auth, or hooks for every trivial state / premature fetch abstractions
 - Legacy `SafeAreaView`, layout via `Dimensions`, or `Platform.OS` where `process.env.EXPO_OS` is enough
 - `any` or `onError(err: any)`

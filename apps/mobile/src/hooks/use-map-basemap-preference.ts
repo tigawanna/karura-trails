@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useState } from "react";
 
-import type { MapBasemapPreset } from "@/types/map";
+import type { MapBasemapPreset } from "@/lib/map-libre/map-style";
 
 const STORAGE_KEY = "map-basemap-preset";
 

@@ -8,19 +8,9 @@ import { TrailLayer } from "./trail-layer";
 import { UserLocationLayer } from "./user-location-layer";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useMapBasemapPreference } from "@/hooks/use-map-basemap-preference";
-import {
-  calculateBBox,
-  combineBBoxes,
-  bboxCenter,
-  bboxToZoom,
-  geomParse,
-} from "@/lib/map-libre/geom-parse";
-import {
-  KARURA_FOREST_CENTER,
-  KARURA_DEFAULT_ZOOM,
-  normalizeMapColorScheme,
-  resolveMapStyle,
-} from "@/types/map";
+import { calculateBBox, combineBBoxes, bboxCenter, bboxToZoom, geomParse } from "@/geo/geom-parse";
+import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM } from "@/geo/karura-bounds";
+import { normalizeMapColorScheme, resolveMapStyle } from "@/lib/map-libre/map-style";
 import { useTrails } from "@/hooks/use-trails";
 
 export function KaruraMap() {

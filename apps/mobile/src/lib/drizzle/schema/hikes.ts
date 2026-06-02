@@ -39,3 +39,5 @@ export type HikeSelect = typeof hikes.$inferSelect;
 export type HikeInsert = typeof hikes.$inferInsert;
 export type HikeWaypointSelect = typeof hikeWaypoints.$inferSelect;
 export type HikeWaypointInsert = typeof hikeWaypoints.$inferInsert;
+
+export type HikeStatus = "planned" | "active" | "completed" | "abandoned";

@@ -29,3 +29,9 @@ export const paths = sqliteTable("paths", {
 
 export type PathSelect = typeof paths.$inferSelect;
 export type PathInsert = typeof paths.$inferInsert;
+
+export type TrailDifficulty = "easy" | "moderate" | "hard" | "expert";
+
+export type TrailSurface = "dirt" | "gravel" | "paved" | "mixed";
+
+export type TrailSource = "trailfork" | "alltrails" | "user";

@@ -1,5 +1,5 @@
-import type { ParsedGeometry } from "@/types/geojson";
-import type { BoundingBox } from "@/types/trail";
+import type { BoundingBox } from "@/geo/bbox";
+import type { ParsedGeometry } from "@/geo/geojson";
 
 export function geomParse(geomString: string | undefined): ParsedGeometry | undefined {
   if (!geomString) return undefined;

@@ -1,4 +1,4 @@
-import type { TrailFeatureCollection } from "@/types/geojson";
+import type { TrailFeatureCollection } from "@/geo/geojson";
 import { count } from "drizzle-orm";
 
 import type { DrizzleDB } from "./client";

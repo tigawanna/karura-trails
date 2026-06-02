@@ -26,3 +26,13 @@ export const points = sqliteTable("points", {
 
 export type PointSelect = typeof points.$inferSelect;
 export type PointInsert = typeof points.$inferInsert;
+
+export type PointCategory =
+  | "junction"
+  | "gate"
+  | "viewpoint"
+  | "rest_area"
+  | "water"
+  | "cave"
+  | "sign"
+  | "custom";

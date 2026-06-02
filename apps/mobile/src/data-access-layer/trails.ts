@@ -1,8 +1,12 @@
 import { db } from "@/lib/drizzle/client";
-import { paths } from "@/lib/drizzle/schema";
+import { paths, type PathSelect } from "@/lib/drizzle/schema";
 import { queryKeyPrefixes } from "@/lib/tanstack/query/client";
 import { queryOptions } from "@tanstack/react-query";
 import { asc, eq, getTableColumns, sql } from "drizzle-orm";
+
+export type TrailWithGeometry = Omit<PathSelect, "geom"> & {
+  geom: string;
+};
 
 const pathsColumns = getTableColumns(paths);
 

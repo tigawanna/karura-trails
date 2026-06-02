@@ -1,9 +1,10 @@
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { IconButton, Portal, Surface, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import type { MapBasemapPreset } from "@/types/map";
+import type { MapBasemapPreset } from "@/lib/map-libre/map-style";
 import { Spacing } from "@/theme";
 
 interface MapBasemapToggleProps {
@@ -31,7 +32,9 @@ export function MapBasemapToggle({ preset, onPresetChange }: MapBasemapTogglePro
         testID="map-basemap-toggle"
       >
         <IconButton
-          icon="layers"
+          icon={({ size, color }) => (
+            <MaterialCommunityIcons name="layers-outline" size={size} color={color} />
+          )}
           mode="contained"
           containerColor={colors.surface}
           iconColor={colors.onSurface}
