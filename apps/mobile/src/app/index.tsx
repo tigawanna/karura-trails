@@ -1,17 +1,5 @@
-import { StyleSheet, View } from "react-native";
-
-import { KaruraMap } from "@/components/map/karura-map";
+import { MapWithTrailSheet } from "@/components/map/map-with-trail-sheet";
 
 export default function MapScreen() {
-  return (
-    <View style={styles.container} testID="map-screen">
-      <KaruraMap />
-    </View>
-  );
+  return <MapWithTrailSheet />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});

@@ -1,6 +1,6 @@
 import type { TrailFeatureCollection } from "@/geo/geojson";
 
-import rawTrails from "../../../assets/data/trails.geojson";
+import rawTrails from "../../assets/data/trails.geojson";
 
 function isFeatureCollection(value: unknown): value is TrailFeatureCollection {
   if (!value || typeof value !== "object") {

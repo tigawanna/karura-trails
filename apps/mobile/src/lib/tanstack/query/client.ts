@@ -1,17 +1,12 @@
 import { MutationCache, QueryClient } from "@tanstack/react-query";
 
-
 export const queryKeyPrefixes = {
   trails: "trails",
   deviceLocation: "device-location",
+  devLocationSpoof: "dev-location-spoof",
 } as const;
 
-
-type QueryKey = [
-  (typeof queryKeyPrefixes)[keyof typeof queryKeyPrefixes],
-  ...(readonly unknown[])
-];
-
+type QueryKey = [(typeof queryKeyPrefixes)[keyof typeof queryKeyPrefixes], ...(readonly unknown[])];
 
 interface MyMeta extends Record<string, unknown> {
   invalidates?: [QueryKey[0], ...(readonly unknown[])][];
@@ -49,6 +44,3 @@ export const queryClient = new QueryClient({
     },
   },
 });
-
-
-

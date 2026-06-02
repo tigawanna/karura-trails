@@ -1,10 +1,11 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
+import { Drawer } from "expo-router/drawer";
 import { StatusBar } from "expo-status-bar";
-import { PaperProvider } from "react-native-paper";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { PaperProvider, useTheme } from "react-native-paper";
 
 import { AnimatedSplashOverlay } from "@/components/splash/animated-icon";
-import AppTabs from "@/components/navigation/app-tabs";
 import { InitDatabase } from "@/lib/drizzle/InitDatabase";
 import { queryClient } from "@/lib/tanstack/query/client";
 import {
@@ -12,24 +13,68 @@ import {
   useAppState,
   useOnlineManager,
 } from "@/lib/tanstack/query/react-native-setup-hooks";
+import { isDevBuild } from "@/lib/dev/is-dev-build";
 import { useThemeSetup } from "@/theme";
 
-export default function TabLayout() {
+function DrawerNavigator() {
+  const { colors } = useTheme();
+
+  return (
+    <Drawer
+      screenOptions={{
+        drawerActiveTintColor: colors.primary,
+        drawerInactiveTintColor: colors.onSurfaceVariant,
+        drawerStyle: { backgroundColor: colors.surface },
+        headerStyle: { backgroundColor: colors.surface },
+        headerTintColor: colors.onSurface,
+        headerTitleStyle: { color: colors.onSurface },
+      }}
+    >
+      <Drawer.Screen
+        name="index"
+        options={{
+          drawerLabel: "Map",
+          title: "Karura Trails",
+          headerShown: false,
+        }}
+      />
+      <Drawer.Screen
+        name="trails"
+        options={{
+          drawerLabel: "All trails",
+          title: "Trails",
+        }}
+      />
+      <Drawer.Screen
+        name="settings"
+        options={{
+          drawerLabel: "Developer settings",
+          title: "Settings",
+          drawerItemStyle: isDevBuild() ? undefined : { display: "none", height: 0 },
+        }}
+      />
+    </Drawer>
+  );
+}
+
+export default function RootLayout() {
   useOnlineManager();
   useAppState(onAppStateChange);
   const { colorScheme, paperTheme, isDarkMode } = useThemeSetup();
 
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <PaperProvider theme={paperTheme}>
-        <QueryClientProvider client={queryClient}>
-          <InitDatabase>
-            <AnimatedSplashOverlay />
-            <AppTabs />
-            <StatusBar style={isDarkMode ? "light" : "dark"} />
-          </InitDatabase>
-        </QueryClientProvider>
-      </PaperProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+        <PaperProvider theme={paperTheme}>
+          <QueryClientProvider client={queryClient}>
+            <InitDatabase>
+              <AnimatedSplashOverlay />
+              <DrawerNavigator />
+              <StatusBar style={isDarkMode ? "light" : "dark"} />
+            </InitDatabase>
+          </QueryClientProvider>
+        </PaperProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
