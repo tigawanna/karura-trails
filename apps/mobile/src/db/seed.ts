@@ -1,8 +1,5 @@
-import { getDb } from "./client";
-import { logCapturedError } from "@/lib/log-captured-error";
+import { opsqliteDb } from "./client";
 import type { TrailFeatureCollection } from "@/types/geojson";
-
-const SEED_SOURCE = "src/db/seed.ts";
 
 interface TrailStats {
   distanceMeters: number;
@@ -72,9 +69,7 @@ function computeTrailStats(coordinates: [number, number, number][]): TrailStats 
 }
 
 export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
-  const rawDb = getDb();
-
-  const existingResult = rawDb.executeSync("SELECT COUNT(*) as count FROM paths;");
+  const existingResult = opsqliteDb.executeSync("SELECT COUNT(*) as count FROM paths;");
   const firstRow = existingResult.rows?.[0];
   const existingCount =
     firstRow && typeof firstRow === "object" && "count" in firstRow ? Number(firstRow.count) : 0;
@@ -83,7 +78,7 @@ export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
     return existingCount;
   }
 
-  rawDb.executeSync("BEGIN TRANSACTION;");
+  opsqliteDb.executeSync("BEGIN TRANSACTION;");
 
   try {
     let inserted = 0;
@@ -100,7 +95,7 @@ export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
 
       const geojsonStr = JSON.stringify(feature.geometry);
 
-      rawDb.executeSync(
+      opsqliteDb.executeSync(
         `INSERT INTO paths (
           slug, name, source, is_loop,
           distance_meters, elevation_gain, elevation_loss,
@@ -126,15 +121,10 @@ export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
       inserted++;
     }
 
-    rawDb.executeSync("COMMIT;");
+    opsqliteDb.executeSync("COMMIT;");
     return inserted;
   } catch (error: unknown) {
-    rawDb.executeSync("ROLLBACK;");
-    logCapturedError("Seed", error, {
-      source: SEED_SOURCE,
-      phase: "seedTrailsFromGeoJSON",
-      extra: { featureCount: geojson.features.length },
-    });
+    opsqliteDb.executeSync("ROLLBACK;");
     throw error;
   }
 }

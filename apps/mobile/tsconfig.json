@@ -5,7 +5,8 @@
     "resolveJsonModule": true,
     "paths": {
       "@/*": ["./src/*"],
-      "@/assets/*": ["./assets/*"]
+      "@/assets/*": ["./assets/*"],
+      "@/drizzle/*": ["./drizzle/*"]
     }
   },
   "exclude": ["node_modules", "babel.config.js", "metro.config.js", "plugins"],

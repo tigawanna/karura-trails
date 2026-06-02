@@ -21,7 +21,8 @@
     "build-preview:eas": "eas build --platform android --profile preview:eas",
     "build-production": "eas build --platform android --profile production",
     "lint": "expo lint",
-    "check-types": "tsgo --noEmit"
+    "check-types": "tsgo --noEmit",
+    "db:migrate": "npx drizzle-kit generate"
   },
   "dependencies": {
     "@expo/ui": "~56.0.15",
@@ -63,6 +64,7 @@
     "@types/react": "~19.2.2",
     "@typescript/native-preview": "7.0.0-dev.20260519.1",
     "babel-plugin-inline-import": "^3.0.0",
+    "drizzle-kit": "^0.31.10",
     "expo-modules-core": "^56.0.14",
     "typescript": "6.0.3"
   }

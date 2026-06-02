@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import AppTabs from "@/components/app-tabs";
-import { DatabaseProvider } from "@/db/provider";
+import { InitDatabase } from "@/db/InitDatabase";
 import { useThemeSetup } from "@/theme";
 
 const queryClient = new QueryClient({
@@ -24,11 +24,11 @@ export default function TabLayout() {
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <PaperProvider theme={paperTheme}>
         <QueryClientProvider client={queryClient}>
-          <DatabaseProvider>
+          <InitDatabase>
             <AnimatedSplashOverlay />
             <AppTabs />
             <StatusBar style={isDarkMode ? "light" : "dark"} />
-          </DatabaseProvider>
+          </InitDatabase>
         </QueryClientProvider>
       </PaperProvider>
     </ThemeProvider>
