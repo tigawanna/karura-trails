@@ -86,6 +86,7 @@ export function TrailLayer({ trails }: TrailLayerProps) {
         }}
         layout={{
           "text-field": ["get", "name"],
+          "text-font": ["Noto Sans Regular"],
           "text-size": 11,
           "symbol-placement": "line",
           "text-allow-overlap": false,

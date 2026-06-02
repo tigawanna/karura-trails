@@ -13,10 +13,8 @@ import {
   bboxToZoom,
   geomParse,
 } from "@/lib/map-libre/geom-parse";
-import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM } from "@/types/map";
+import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM, OPENFREEMAP_POSITRON_STYLE } from "@/types/map";
 import { useTrails } from "@/hooks/use-trails";
-
-const OSM_STYLE = "https://demotiles.maplibre.org/style.json";
 
 export function KaruraMap() {
   const { colors } = useTheme();
@@ -66,7 +64,11 @@ export function KaruraMap() {
           <Text style={{ color: colors.onSurface, marginTop: 8 }}>Loading trails...</Text>
         </View>
       )}
-      <Map style={styles.map} mapStyle={OSM_STYLE} onDidFinishLoadingMap={() => setMapReady(true)}>
+      <Map
+        style={styles.map}
+        mapStyle={OPENFREEMAP_POSITRON_STYLE}
+        onDidFinishLoadingMap={() => setMapReady(true)}
+      >
         <Camera center={camera.center} zoom={camera.zoom} duration={camera.duration} />
 
         {trails && trails.length > 0 && <TrailLayer trails={trails} />}

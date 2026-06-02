@@ -20,3 +20,5 @@ export const KARURA_FOREST_BBOX: BoundingBox = {
 };
 
 export const KARURA_DEFAULT_ZOOM = 13.5;
+
+export const OPENFREEMAP_POSITRON_STYLE = "https://tiles.openfreemap.org/styles/positron";
