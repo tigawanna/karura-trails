@@ -13,21 +13,19 @@ export function findNearestPaths(
   limit = 3,
   radiusMeters = 200,
 ): NearestPathResult[] {
-  const degreeRadius = radiusMeters / 111000;
   const rows = executeQuerySync<{
     id: number;
     name: string;
     slug: string;
     distance_m: number;
   }>(
-    `SELECT p.id, p.name, p.slug,
-            ST_Distance(p.geom, MakePoint(${lng}, ${lat}, 4326), 1) AS distance_m
-     FROM paths p
-     WHERE p.ROWID IN (
-       SELECT ROWID FROM SpatialIndex
-       WHERE f_table_name = 'paths' AND f_geometry_column = 'geom'
-       AND search_frame = BuildCircleMbr(${lng}, ${lat}, ${degreeRadius}, 4326)
+    `SELECT id, name, slug, distance_m
+     FROM (
+       SELECT p.id, p.name, p.slug,
+              Distance(p.geom, MakePoint(${lng}, ${lat}, 4326), 0) AS distance_m
+       FROM paths p
      )
+     WHERE distance_m <= ${radiusMeters}
      ORDER BY distance_m
      LIMIT ${limit};`,
   );

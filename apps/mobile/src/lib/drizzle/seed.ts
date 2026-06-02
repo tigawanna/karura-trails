@@ -1,5 +1,5 @@
 import type { TrailFeatureCollection } from "@/types/geojson";
-import { count, sql } from "drizzle-orm";
+import { count } from "drizzle-orm";
 
 import type { DrizzleDB } from "./client";
 import { paths } from "./schema";
@@ -95,25 +95,19 @@ export async function seedTrailsFromGeoJSON(
       const stats = computeTrailStats(coords);
       const geojsonStr = JSON.stringify(feature.geometry);
 
-      await tx.run(sql`
-        INSERT INTO paths (
-          slug, name, source, is_loop,
-          distance_meters, elevation_gain, elevation_loss,
-          min_elevation, max_elevation, vertex_count, geom
-        ) VALUES (
-          ${slug},
-          ${name},
-          ${source},
-          ${stats.isLoop ? 1 : 0},
-          ${stats.distanceMeters},
-          ${stats.elevationGain},
-          ${stats.elevationLoss},
-          ${stats.minElevation},
-          ${stats.maxElevation},
-          ${vertexCount},
-          CastToXYZ(SetSRID(GeomFromGeoJSON(${geojsonStr}), 4326))
-        )
-      `);
+      await tx.insert(paths).values({
+        slug,
+        name,
+        source,
+        isLoop: stats.isLoop,
+        distanceMeters: stats.distanceMeters,
+        elevationGain: stats.elevationGain,
+        elevationLoss: stats.elevationLoss,
+        minElevation: stats.minElevation,
+        maxElevation: stats.maxElevation,
+        vertexCount,
+        geom: geojsonStr,
+      });
 
       inserted++;
     }

@@ -13,18 +13,15 @@ export function inferElevationAtPoint(
   lat: number,
   searchRadiusMeters = 50,
 ): ElevationInference | null {
-  const degreeRadius = searchRadiusMeters / 111000;
-
   const nearestPaths = executeQuerySync<NearestPathRow>(
-    `SELECT p.id, p.name,
-            ST_Distance(p.geom, MakePoint(${lng}, ${lat}, 4326), 1) AS distance_m,
-            AsGeoJSON(p.geom) AS geom_json
-     FROM paths p
-     WHERE p.ROWID IN (
-       SELECT ROWID FROM SpatialIndex
-       WHERE f_table_name = 'paths' AND f_geometry_column = 'geom'
-       AND search_frame = BuildCircleMbr(${lng}, ${lat}, ${degreeRadius}, 4326)
+    `SELECT id, name, distance_m, geom_json
+     FROM (
+       SELECT p.id, p.name,
+              Distance(p.geom, MakePoint(${lng}, ${lat}, 4326), 0) AS distance_m,
+              AsGeoJSON(p.geom) AS geom_json
+       FROM paths p
      )
+     WHERE distance_m <= ${searchRadiusMeters}
      ORDER BY distance_m
      LIMIT 1;`,
   );

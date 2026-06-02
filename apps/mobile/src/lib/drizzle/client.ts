@@ -1,8 +1,15 @@
 import * as schema from "@/lib/drizzle/schema";
-import { ANDROID_DATABASE_PATH, IOS_LIBRARY_PATH, open } from "@op-engineering/op-sqlite";
+import {
+  ANDROID_DATABASE_PATH,
+  IOS_LIBRARY_PATH,
+  open,
+  type Scalar,
+} from "@op-engineering/op-sqlite";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/op-sqlite";
 import { Platform } from "react-native";
+
+import { discardRegisteredGeometryColumns } from "./spatial-setup";
 
 export const DATABASE_NAME = "notes.db";
 export const DATABASE_BACKUP_NAME = "notes-backup.db";
@@ -32,5 +39,11 @@ export async function ensureSpatialMetadata(): Promise<void> {
     return;
   }
   await db.run(sql`SELECT InitSpatialMetaData(1)`);
+  discardRegisteredGeometryColumns(opsqliteDb);
   spatialMetadataReady = true;
+}
+
+export function executeQuerySync<T extends object>(query: string, params?: Scalar[]): T[] {
+  const result = params ? opsqliteDb.executeSync(query, params) : opsqliteDb.executeSync(query);
+  return (result.rows ?? []) as T[];
 }
