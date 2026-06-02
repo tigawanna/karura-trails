@@ -3,11 +3,7 @@ import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 import { useTheme } from "react-native-paper";
 
 import { geomParse, isValidLineString } from "@/lib/map-libre/geom-parse";
-import type { PathSelect } from "@/db/schema";
-
-interface TrailWithGeometry extends Omit<PathSelect, "geom"> {
-  geom: string;
-}
+import type { TrailWithGeometry } from "@/types/trail";
 
 interface TrailLayerProps {
   trails: TrailWithGeometry[];

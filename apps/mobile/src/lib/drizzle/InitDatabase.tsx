@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { View, Text, StyleSheet } from "react-native";
-import { useMigrations } from "drizzle-orm/op-sqlite/migrator";
 import migrations from "@/drizzle/migrations";
+import { useMigrations } from "drizzle-orm/op-sqlite/migrator";
+import { useEffect, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { db, ensureSpatialMetadata } from "./client";
 
 interface InitDatabaseProps {
@@ -58,5 +58,4 @@ export function InitDatabase({ children }: InitDatabaseProps) {
 
   return children;
 }
-
 const styles = StyleSheet.create({});

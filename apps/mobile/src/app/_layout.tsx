@@ -7,17 +7,14 @@ import { AnimatedSplashOverlay } from "@/components/animated-icon";
 import AppTabs from "@/components/app-tabs";
 import { InitDatabase } from "@/lib/drizzle/InitDatabase";
 import { useThemeSetup } from "@/theme";
+import { queryClient } from "@/lib/tanstack/query/client";
+import { onAppStateChange, useAppState, useOnlineManager } from "@/lib/tanstack/query/react-native-setup-hooks";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000,
-      retry: 1,
-    },
-  },
-});
+
 
 export default function TabLayout() {
+  useOnlineManager();
+  useAppState(onAppStateChange);
   const { colorScheme, paperTheme, isDarkMode } = useThemeSetup();
 
   return (

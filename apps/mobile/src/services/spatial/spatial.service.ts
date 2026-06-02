@@ -1,4 +1,4 @@
-import { executeQuerySync } from "@/db/client";
+import { executeQuerySync } from "@/lib/drizzle/client";
 
 interface NearestPathResult {
   id: number;

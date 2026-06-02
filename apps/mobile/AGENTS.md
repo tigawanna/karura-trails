@@ -4,11 +4,11 @@ Read Expo v56 docs before changing APIs: https://docs.expo.dev/versions/v56.0.0/
 
 **Stack:** Expo Router (`src/app/`), React 19 / RN (New Arch), react-native-paper + `src/theme/`, strict TS, `@/` alias. Prefer `pnpm dev` (Expo Go) before dev builds / EAS.
 
-**Data stack:** op-sqlite + SpatiaLite (`src/db/`), Drizzle ORM (sqlite-proxy), MapLibre React Native v11 (`src/components/map/`), TanStack Query, expo-location. SpatiaLite Android `.so` files are downloaded from [react-native-spatialite-artifacts releases](https://github.com/tigawanna/react-native-spatialite-artifacts/releases) via `pnpm fetch:spatialite` (version in `spatialite.release.json` or `pnpm fetch:spatialite -- <version>`). `prebuild` / `prebuild:android` run fetch automatically. Not available in Expo Go.
+**Data stack:** op-sqlite + SpatiaLite + Drizzle (`src/lib/drizzle/`), MapLibre React Native v11 (`src/components/map/`), TanStack Query, expo-location. SpatiaLite Android `.so` files are downloaded from [react-native-spatialite-artifacts releases](https://github.com/tigawanna/react-native-spatialite-artifacts/releases) via `pnpm fetch:spatialite` (version in `spatialite.release.json` or `pnpm fetch:spatialite -- <version>`). `prebuild` / `prebuild:android` run fetch automatically. Not available in Expo Go.
 
 **Key conventions:**
 
-- Database schema in `src/db/schema/`; spatial types in `src/db/spatial-types.ts`
+- Database schema in `src/lib/drizzle/schema/`; spatial types in `src/lib/drizzle/spatial-types.ts`
 - Always use `AsGeoJSON(geom)` when reading geometry columns — never raw BLOB
 - Use `executeQuerySync()` for spatial SQL not expressible via Drizzle
 - Map components in `src/components/map/`; MapLibre v11 uses `Map`, `Camera`, `GeoJSONSource`, `Layer`

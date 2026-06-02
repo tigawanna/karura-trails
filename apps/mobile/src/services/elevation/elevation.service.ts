@@ -1,4 +1,4 @@
-import { executeQuerySync } from "@/db/client";
+import { executeQuerySync } from "@/lib/drizzle/client";
 import type { ElevationInference } from "@/types/trail";
 
 interface NearestPathRow {

@@ -1,3 +1,5 @@
+import type { PathSelect } from "@/lib/drizzle/schema";
+
 export type TrailDifficulty = "easy" | "moderate" | "hard" | "expert";
 
 export type TrailSurface = "dirt" | "gravel" | "paved" | "mixed";
@@ -17,6 +19,10 @@ export type PointCategory =
 export type ElevationSource = "gps" | "inferred_from_path" | "manual";
 
 export type HikeStatus = "planned" | "active" | "completed" | "abandoned";
+
+export type TrailWithGeometry = Omit<PathSelect, "geom"> & {
+  geom: string;
+};
 
 export interface TrailElevationProfile {
   distance: number;

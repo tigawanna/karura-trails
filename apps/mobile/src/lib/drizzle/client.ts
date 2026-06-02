@@ -1,8 +1,8 @@
-import { drizzle } from "drizzle-orm/op-sqlite";
-import { sql } from "drizzle-orm";
 import * as schema from "@/lib/drizzle/schema";
-import { Platform } from "react-native";
 import { ANDROID_DATABASE_PATH, IOS_LIBRARY_PATH, open } from "@op-engineering/op-sqlite";
+import { sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/op-sqlite";
+import { Platform } from "react-native";
 
 export const DATABASE_NAME = "notes.db";
 export const DATABASE_BACKUP_NAME = "notes-backup.db";
@@ -23,6 +23,7 @@ export const db = drizzle(opsqliteDb, {
   schema: schema,
 });
 
+
 let spatialMetadataReady = false;
 
 export async function ensureSpatialMetadata(): Promise<void> {
@@ -32,3 +33,4 @@ export async function ensureSpatialMetadata(): Promise<void> {
   await db.run(sql`SELECT InitSpatialMetaData(1)`);
   spatialMetadataReady = true;
 }
+

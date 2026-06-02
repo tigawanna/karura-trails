@@ -5,7 +5,6 @@ import { Camera, Map } from "@maplibre/maplibre-react-native";
 
 import { TrailLayer } from "./trail-layer";
 import { UserLocationLayer } from "./user-location-layer";
-import { useTrails } from "@/hooks/use-trails";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import {
   calculateBBox,
@@ -15,14 +14,16 @@ import {
   geomParse,
 } from "@/lib/map-libre/geom-parse";
 import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM } from "@/types/map";
+import { useTrails } from "@/hooks/use-trails";
 
 const OSM_STYLE = "https://demotiles.maplibre.org/style.json";
 
 export function KaruraMap() {
   const { colors } = useTheme();
-  const { data: trails, isLoading: trailsLoading } = useTrails();
   const { location } = useDeviceLocation();
   const [mapReady, setMapReady] = useState(false);
+
+  const { data: trails, isLoading: trailsLoading } = useTrails();
 
   const camera = useMemo(() => {
     if (!trails || trails.length === 0) {

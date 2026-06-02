@@ -1,5 +1,6 @@
-import { opsqliteDb } from "./client";
 import type { TrailFeatureCollection } from "@/types/geojson";
+
+import { opsqliteDb } from "./client";
 
 interface TrailStats {
   distanceMeters: number;
