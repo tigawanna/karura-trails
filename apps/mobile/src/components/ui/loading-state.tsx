@@ -1,8 +1,11 @@
+import { Host, LinearWavyProgressIndicator } from "@expo/ui/jetpack-compose";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Spacing } from "@/theme";
+
+const isAndroid = process.env.EXPO_OS === "android";
 
 export type LoadingStateProps = {
   message: string;
@@ -25,7 +28,13 @@ export function LoadingState({ message, testID }: LoadingStateProps) {
         },
       ]}
     >
-      <ActivityIndicator size="large" color={colors.primary} />
+      {isAndroid ? (
+        <Host style={styles.wavyHost} matchContents>
+          <LinearWavyProgressIndicator color={colors.primary} />
+        </Host>
+      ) : (
+        <ActivityIndicator size="large" color={colors.primary} />
+      )}
       <Text
         variant="bodyLarge"
         style={{ color: colors.onSurfaceVariant, marginTop: Spacing.three }}
@@ -41,5 +50,8 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  wavyHost: {
+    width: 200,
   },
 });

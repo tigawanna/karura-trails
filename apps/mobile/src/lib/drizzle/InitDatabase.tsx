@@ -1,8 +1,11 @@
+import { ErrorState } from "@/components/ui/error-state";
+import { LoadingState } from "@/components/ui/loading-state";
 import migrations from "@/drizzle/migrations";
 import { useMigrations } from "drizzle-orm/op-sqlite/migrator";
 import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
 import { db, ensureSpatialMetadata } from "./client";
+import { seedTrailsFromGeoJSON } from "./seed";
+import { loadTrailsGeoJSON } from "../parse-trails-geojson";
 
 interface InitDatabaseProps {
   children?: React.ReactNode;
@@ -10,52 +13,55 @@ interface InitDatabaseProps {
 
 export function InitDatabase({ children }: InitDatabaseProps) {
   const { success, error } = useMigrations(db, migrations);
-  const [spatialReady, setSpatialReady] = useState(false);
-  const [spatialError, setSpatialError] = useState<Error | null>(null);
+  const [ready, setReady] = useState(false);
+  const [initError, setInitError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!success) {
       return;
     }
-    ensureSpatialMetadata()
-      .then(() => setSpatialReady(true))
-      .catch((initError) => {
-        setSpatialError(initError instanceof Error ? initError : new Error(String(initError)));
+
+    async function initialize() {
+      await ensureSpatialMetadata();
+      const geojson = loadTrailsGeoJSON();
+      await seedTrailsFromGeoJSON(db, geojson);
+    }
+
+    initialize()
+      .then(() => setReady(true))
+      .catch((err) => {
+        console.error("[InitDatabase] initialization failed:", err);
+        setInitError(err instanceof Error ? err : new Error(String(err)));
       });
   }, [success]);
 
   if (error) {
     return (
-      <View>
-        <Text>Migration error: {error.message}</Text>
-      </View>
+      <ErrorState
+        title="Migration Failed"
+        message={error.message}
+        testID="init-db-migration-error"
+      />
     );
   }
 
   if (!success) {
+    return <LoadingState message="Running migrations…" testID="init-db-migrating" />;
+  }
+
+  if (initError) {
     return (
-      <View>
-        <Text>Migration is in progress...</Text>
-      </View>
+      <ErrorState
+        title="Database Init Failed"
+        message={initError.message}
+        testID="init-db-init-error"
+      />
     );
   }
 
-  if (spatialError) {
-    return (
-      <View>
-        <Text>SpatiaLite init error: {spatialError.message}</Text>
-      </View>
-    );
-  }
-
-  if (!spatialReady) {
-    return (
-      <View>
-        <Text>Initializing SpatiaLite…</Text>
-      </View>
-    );
+  if (!ready) {
+    return <LoadingState message="Preparing database…" testID="init-db-loading" />;
   }
 
   return children;
 }
-const styles = StyleSheet.create({});

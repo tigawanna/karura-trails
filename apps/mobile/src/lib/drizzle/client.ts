@@ -23,6 +23,7 @@ export const db = drizzle(opsqliteDb, {
   schema: schema,
 });
 
+export type DrizzleDB = typeof db;
 
 let spatialMetadataReady = false;
 
@@ -33,4 +34,3 @@ export async function ensureSpatialMetadata(): Promise<void> {
   await db.run(sql`SELECT InitSpatialMetaData(1)`);
   spatialMetadataReady = true;
 }
-

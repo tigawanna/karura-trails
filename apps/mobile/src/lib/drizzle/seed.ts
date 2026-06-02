@@ -1,6 +1,8 @@
 import type { TrailFeatureCollection } from "@/types/geojson";
+import { count, sql } from "drizzle-orm";
 
-import { opsqliteDb } from "./client";
+import type { DrizzleDB } from "./client";
+import { paths } from "./schema";
 
 interface TrailStats {
   distanceMeters: number;
@@ -69,19 +71,17 @@ function computeTrailStats(coordinates: [number, number, number][]): TrailStats 
   };
 }
 
-export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
-  const existingResult = opsqliteDb.executeSync("SELECT COUNT(*) as count FROM paths;");
-  const firstRow = existingResult.rows?.[0];
-  const existingCount =
-    firstRow && typeof firstRow === "object" && "count" in firstRow ? Number(firstRow.count) : 0;
+export async function seedTrailsFromGeoJSON(
+  database: DrizzleDB,
+  geojson: TrailFeatureCollection,
+): Promise<number> {
+  const [{ total }] = await database.select({ total: count() }).from(paths);
 
-  if (existingCount > 0) {
-    return existingCount;
+  if (total > 0) {
+    return total;
   }
 
-  opsqliteDb.executeSync("BEGIN TRANSACTION;");
-
-  try {
+  return database.transaction(async (tx) => {
     let inserted = 0;
 
     for (const feature of geojson.features) {
@@ -93,39 +93,31 @@ export function seedTrailsFromGeoJSON(geojson: TrailFeatureCollection): number {
       const { slug, name, source, vertexCount } = properties;
       const coords = feature.geometry.coordinates;
       const stats = computeTrailStats(coords);
-
       const geojsonStr = JSON.stringify(feature.geometry);
 
-      opsqliteDb.executeSync(
-        `INSERT INTO paths (
+      await tx.run(sql`
+        INSERT INTO paths (
           slug, name, source, is_loop,
           distance_meters, elevation_gain, elevation_loss,
           min_elevation, max_elevation, vertex_count, geom
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-          SetSRID(GeomFromGeoJSON(?), 4326)
-        );`,
-        [
-          slug,
-          name,
-          source,
-          stats.isLoop ? 1 : 0,
-          stats.distanceMeters,
-          stats.elevationGain,
-          stats.elevationLoss,
-          stats.minElevation,
-          stats.maxElevation,
-          vertexCount,
-          geojsonStr,
-        ],
-      );
+        ) VALUES (
+          ${slug},
+          ${name},
+          ${source},
+          ${stats.isLoop ? 1 : 0},
+          ${stats.distanceMeters},
+          ${stats.elevationGain},
+          ${stats.elevationLoss},
+          ${stats.minElevation},
+          ${stats.maxElevation},
+          ${vertexCount},
+          CastToXYZ(SetSRID(GeomFromGeoJSON(${geojsonStr}), 4326))
+        )
+      `);
 
       inserted++;
     }
 
-    opsqliteDb.executeSync("COMMIT;");
     return inserted;
-  } catch (error: unknown) {
-    opsqliteDb.executeSync("ROLLBACK;");
-    throw error;
-  }
+  });
 }
