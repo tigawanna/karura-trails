@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { KaruraMap } from "@/components/map/karura-map";
+import { MapBackToRouteButton } from "@/components/map/map-back-to-route-button";
 import { MapLocationControls } from "@/components/map/map-location-controls";
 import {
   MarkerDetailSheet,
@@ -10,7 +11,7 @@ import {
 } from "@/components/map/marker-detail-sheet";
 import { NavigationBottomSheet } from "@/components/map/navigation-bottom-sheet";
 import { LoadingState } from "@/components/ui/loading-state";
-import { isNearKarura, markerLabel } from "@/geo/nearest-marker";
+import { isNearKarura, markerLabel, pointCoordinates } from "@/geo/nearest-marker";
 import { useDeviceHeading } from "@/hooks/use-device-heading";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useLiveLocation } from "@/hooks/use-live-location";
@@ -19,14 +20,25 @@ import { resolveMarkerByRef } from "@/hooks/use-marker-search";
 import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 import { parseViaRefs } from "@/lib/navigation/route-params";
 import { useNavigationStore } from "@/stores/navigation-store";
-import { buildMarkerNavigationActions, showMarkerActionMenu } from "@/lib/ui/marker-action-menu";
+import {
+  buildMarkerNavigationActions,
+  confirmStartNavigationTo,
+  showMarkerActionMenu,
+} from "@/lib/ui/marker-action-menu";
 
 export function RouteMapScreen() {
   const params = useLocalSearchParams<{ from?: string; to?: string; via?: string }>();
-  const { location: staticLocation, errorMsg, isRefreshing, refreshLocation } = useDeviceLocation();
+  const {
+    location: staticLocation,
+    errorMsg,
+    isRefreshing,
+    refreshLocation,
+    manuallySetLocation,
+  } = useDeviceLocation();
   const { enrichedPoints, pointsById, pointsByRef, isLoading } = useRoutingGraphData();
 
   const [detailMarkerId, setDetailMarkerId] = useState<number | null>(null);
+  const [pinnedCameraPointId, setPinnedCameraPointId] = useState<number | null>(null);
   const [highlightedRoutePointId, setHighlightedRoutePointId] = useState<number | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [followUser, setFollowUser] = useState(false);
@@ -38,6 +50,7 @@ export function RouteMapScreen() {
   const userLatitude = activeLocation?.coords.latitude ?? staticLocation?.coords.latitude ?? null;
   const userLongitude =
     activeLocation?.coords.longitude ?? staticLocation?.coords.longitude ?? null;
+  const userAltitude = activeLocation?.coords.altitude ?? staticLocation?.coords.altitude ?? null;
   const heading = useDeviceHeading(Boolean(userLatitude && userLongitude));
 
   const beginNavigation = useNavigationStore((state) => state.beginNavigation);
@@ -84,12 +97,20 @@ export function RouteMapScreen() {
   );
 
   const focusPointId = followUser
-    ? (highlightedRoutePointId ?? detailMarkerId ?? navigation.toPointId ?? null)
-    : (highlightedRoutePointId ??
+    ? (highlightedRoutePointId ??
+      detailMarkerId ??
+      pinnedCameraPointId ??
+      navigation.toPointId ??
+      null)
+    : (pinnedCameraPointId ??
+      highlightedRoutePointId ??
       detailMarkerId ??
       navigation.toPointId ??
       navigation.fromPointId ??
       null);
+
+  const isViewingOffRoute =
+    navigation.toPointId != null && pinnedCameraPointId != null && !followUser;
   const detailMarker = detailMarkerId != null ? (pointsById.get(detailMarkerId) ?? null) : null;
 
   const mapLocation = useMemo(() => {
@@ -121,8 +142,28 @@ export function RouteMapScreen() {
     setFollowUser(true);
     setRecenterKey((current) => current + 1);
     setDetailMarkerId(null);
+    setPinnedCameraPointId(null);
     setHighlightedRoutePointId(null);
   }, []);
+
+  const handleBackToRoute = useCallback(() => {
+    setFollowUser(false);
+    setDetailMarkerId(null);
+    setPinnedCameraPointId(navigation.toPointId);
+    setHighlightedRoutePointId(null);
+  }, [navigation.toPointId]);
+
+  const setLocationAtMarker = useCallback(
+    (markerId: number) => {
+      const marker = pointsById.get(markerId);
+      const coordinates = marker ? pointCoordinates(marker) : null;
+      if (!coordinates) {
+        return;
+      }
+      manuallySetLocation(coordinates.latitude, coordinates.longitude);
+    },
+    [manuallySetLocation, pointsById],
+  );
 
   const handleRefreshLocation = useCallback(() => {
     refreshLocation();
@@ -132,6 +173,7 @@ export function RouteMapScreen() {
 
   const handleMarkerPress = useCallback((pointId: number) => {
     setFollowUser(false);
+    setPinnedCameraPointId(pointId);
     setDetailMarkerId(pointId);
   }, []);
 
@@ -150,13 +192,20 @@ export function RouteMapScreen() {
         isOnActiveRoute: navigation.isOnActiveRoute(pointId),
         isViaPoint: navigation.isViaPoint(pointId),
         isBlockedPoint: navigation.isBlockedPoint(pointId),
-        onNavigateTo: () => navigation.startNavigationTo(pointId),
+        onNavigateTo: () =>
+          confirmStartNavigationTo(markerLabel(marker), () =>
+            navigation.startNavigationTo(pointId),
+          ),
+        onNavigateFrom: () => navigation.navigateFromHere(pointId),
+        onSetLocationHere: () => setLocationAtMarker(pointId),
         onNavigateHereInstead: () => {
           navigation.navigateToInstead(pointId);
+          setPinnedCameraPointId(pointId);
           setDetailMarkerId(pointId);
         },
         onRouteThroughHere: () => {
           navigation.routeThroughHere(pointId);
+          setPinnedCameraPointId(pointId);
           setDetailMarkerId(pointId);
         },
         onRemoveFromRoute: () => navigation.removeFromRoute(pointId),
@@ -170,7 +219,7 @@ export function RouteMapScreen() {
         actions,
       });
     },
-    [navigation, pointsById],
+    [navigation, pointsById, setLocationAtMarker],
   );
 
   if (isLoading || !hydrated) {
@@ -186,6 +235,7 @@ export function RouteMapScreen() {
       <KaruraMap
         focusPointId={focusPointId}
         routePointIds={navigation.routePointIds}
+        isNavigating={navigation.toPointId != null}
         userLocation={mapLocation}
         userHeading={heading}
         followUserLocation={followUser}
@@ -195,6 +245,7 @@ export function RouteMapScreen() {
         onMarkerLongPress={handleMarkerLongPress}
         onUserInteraction={handleUserInteraction}
       />
+      <MapBackToRouteButton visible={isViewingOffRoute} onPress={handleBackToRoute} />
       <MapLocationControls
         followUser={followUser}
         isRefreshing={isRefreshing}
@@ -214,8 +265,12 @@ export function RouteMapScreen() {
           userLongitude={userLongitude}
           onHighlightPoint={(pointId) => {
             setFollowUser(false);
+            setPinnedCameraPointId(pointId);
             setHighlightedRoutePointId(pointId);
           }}
+          userAltitude={userAltitude}
+          onChangeFrom={navigation.navigateFromHere}
+          onChangeTo={navigation.navigateToInstead}
           onAddVia={navigation.routeThroughHere}
           onRemoveVia={navigation.removeViaPoint}
           onSelectRoute={(pointIds, distance) =>
@@ -238,7 +293,9 @@ export function RouteMapScreen() {
           initialSnapIndex={1}
           dismissible
           overlay
+          userSelected
           onDismiss={() => setDetailMarkerId(null)}
+          onSetLocationHere={() => setLocationAtMarker(detailMarker.id)}
           onClearRoute={navigation.clearNavigation}
         />
       ) : null}

@@ -28,8 +28,10 @@ interface MarkerDetailSheetProps {
   initialSnapIndex?: number;
   dismissible?: boolean;
   overlay?: boolean;
+  userSelected?: boolean;
   onDismiss?: () => void;
   onNavigateTo?: () => void;
+  onSetLocationHere?: () => void;
   onClearRoute?: () => void;
 }
 
@@ -60,8 +62,10 @@ export function MarkerDetailSheet({
   initialSnapIndex = 1,
   dismissible = false,
   overlay = false,
+  userSelected = false,
   onDismiss,
   onNavigateTo,
+  onSetLocationHere,
   onClearRoute,
 }: MarkerDetailSheetProps) {
   const { colors } = useTheme();
@@ -197,7 +201,7 @@ export function MarkerDetailSheet({
                       variant="labelLarge"
                       style={{ color: colors.onPrimaryContainer, fontWeight: "700" }}
                     >
-                      {distanceMeters <= 40
+                      {!userSelected && distanceMeters <= 40
                         ? "You are here"
                         : `${formatDistance(distanceMeters)} away`}
                     </Text>
@@ -261,6 +265,11 @@ export function MarkerDetailSheet({
               ) : null}
 
               <View style={styles.actions}>
+                {onSetLocationHere ? (
+                  <Button mode="contained-tonal" icon="crosshairs-gps" onPress={onSetLocationHere}>
+                    I am here
+                  </Button>
+                ) : null}
                 {onNavigateTo ? (
                   <Button mode="contained" icon="navigation" onPress={onNavigateTo}>
                     Navigate here

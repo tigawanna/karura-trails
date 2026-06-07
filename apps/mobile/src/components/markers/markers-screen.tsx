@@ -4,6 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { ActivityIndicator, Card, Chip, Searchbar, Text, useTheme } from "react-native-paper";
 import { useQuery } from "@tanstack/react-query";
 
+import { ClearSearchFiltersButton } from "@/components/common/clear-search-filters-button";
 import { LoadingState } from "@/components/ui/loading-state";
 import { landmarkTypesQueryOptions } from "@/data-access-layer/landmark-types";
 import { enrichedRoutingPointsQueryOptions } from "@/data-access-layer/routing-graph";
@@ -66,6 +67,13 @@ export function MarkersScreen() {
     );
   };
 
+  const hasActiveFilters = searchQuery.trim().length > 0 || activeFeatureSlugs.length > 0;
+
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setActiveFeatureSlugs([]);
+  };
+
   if (isPending && totalCount === 0) {
     return <LoadingState message="Loading markers…" testID="markers-loading" />;
   }
@@ -73,14 +81,18 @@ export function MarkersScreen() {
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]} testID="markers-screen">
       <View style={styles.header}>
-        <Text variant="headlineSmall" style={{ color: colors.onSurface, fontWeight: "700" }}>
-          Markers
-        </Text>
-        <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
-          {markers.length === totalCount
-            ? `${totalCount} routing markers`
-            : `${markers.length} of ${totalCount} markers`}
-        </Text>
+        <View style={styles.summaryRow}>
+          <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, flex: 1 }}>
+            {markers.length === totalCount
+              ? `${totalCount} routing markers`
+              : `${markers.length} of ${totalCount} markers`}
+          </Text>
+          <ClearSearchFiltersButton
+            visible={hasActiveFilters}
+            onPress={clearAllFilters}
+            testID="markers-clear-all"
+          />
+        </View>
         <Searchbar
           placeholder="Search by name, ref, or landmark type…"
           value={searchQuery}
@@ -160,6 +172,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.four,
     paddingTop: Spacing.four,
     paddingBottom: Spacing.two,
+  },
+  summaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.two,
   },
   searchbar: {
     borderRadius: 14,

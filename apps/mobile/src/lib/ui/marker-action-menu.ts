@@ -1,4 +1,6 @@
-import { ActionSheetIOS, Alert, Platform } from "react-native";
+import { Alert } from "react-native";
+
+import { presentMarkerActionMenu } from "@/components/map/marker-action-menu-host";
 
 export type MarkerActionMenuItem = {
   label: string;
@@ -14,35 +16,13 @@ export function showMarkerActionMenu(input: {
     return;
   }
 
-  const options = [...input.actions.map((action) => action.label), "Cancel"];
-  const cancelIndex = options.length - 1;
-  const destructiveButtonIndex = input.actions.findIndex((action) => action.destructive);
+  presentMarkerActionMenu(input);
+}
 
-  if (Platform.OS === "ios") {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title: input.markerLabel,
-        options,
-        cancelButtonIndex: cancelIndex,
-        destructiveButtonIndex: destructiveButtonIndex >= 0 ? destructiveButtonIndex : undefined,
-      },
-      (buttonIndex) => {
-        if (buttonIndex === cancelIndex || buttonIndex === undefined) {
-          return;
-        }
-        input.actions[buttonIndex]?.onPress();
-      },
-    );
-    return;
-  }
-
-  Alert.alert(input.markerLabel, undefined, [
-    ...input.actions.map((action) => ({
-      text: action.label,
-      style: action.destructive ? ("destructive" as const) : ("default" as const),
-      onPress: action.onPress,
-    })),
-    { text: "Cancel", style: "cancel" as const },
+export function confirmStartNavigationTo(markerLabel: string, onConfirm: () => void) {
+  Alert.alert(`Navigate to ${markerLabel}?`, "Start navigation to this marker?", [
+    { text: "Cancel", style: "cancel" },
+    { text: "Navigate", onPress: onConfirm },
   ]);
 }
 
@@ -55,20 +35,32 @@ export function buildMarkerNavigationActions(input: {
   isViaPoint: boolean;
   isBlockedPoint: boolean;
   onNavigateTo: () => void;
+  onNavigateFrom: () => void;
   onNavigateHereInstead: () => void;
   onRouteThroughHere: () => void;
   onRemoveFromRoute: () => void;
   onRemoveViaStop: () => void;
   onUnblockPoint: () => void;
   onViewDetails: () => void;
+  onSetLocationHere: () => void;
 }): MarkerActionMenuItem[] {
   const actions: MarkerActionMenuItem[] = [];
 
   if (!input.isNavigating) {
-    actions.push({ label: "Navigate to", onPress: input.onNavigateTo });
+    actions.push({ label: "Navigate to here", onPress: input.onNavigateTo });
+    if (!input.isOrigin) {
+      actions.push({ label: "Navigate from here", onPress: input.onNavigateFrom });
+    }
+    actions.push({ label: "I am here", onPress: input.onSetLocationHere });
     actions.push({ label: "View details", onPress: input.onViewDetails });
     return actions;
   }
+
+  if (!input.isOrigin) {
+    actions.push({ label: "Navigate from here", onPress: input.onNavigateFrom });
+  }
+
+  actions.push({ label: "I am here", onPress: input.onSetLocationHere });
 
   if (!input.isDestination && !input.isOrigin) {
     actions.push({ label: "Navigate here instead", onPress: input.onNavigateHereInstead });

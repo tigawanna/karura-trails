@@ -12,6 +12,7 @@ import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 import { formatRouteDistance } from "@/lib/navigation/route-params";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { Spacing } from "@/theme";
+import { ClearSearchFiltersButton } from "@/components/common/clear-search-filters-button";
 import {
   getUpcomingRouteMarkers,
   RouteElevationChart,
@@ -29,7 +30,10 @@ interface NavigationBottomSheetProps {
   highlightedPointId: number | null;
   userLatitude?: number | null;
   userLongitude?: number | null;
+  userAltitude?: number | null;
   onHighlightPoint: (pointId: number) => void;
+  onChangeFrom: (pointId: number) => void;
+  onChangeTo: (pointId: number) => void;
   onAddVia: (pointId: number) => void;
   onRemoveVia: (pointId: number) => void;
   onSelectRoute: (pointIds: number[], distanceMeters: number) => void;
@@ -46,7 +50,10 @@ export function NavigationBottomSheet({
   highlightedPointId,
   userLatitude = null,
   userLongitude = null,
+  userAltitude = null,
   onHighlightPoint,
+  onChangeFrom,
+  onChangeTo,
   onAddVia,
   onRemoveVia,
   onSelectRoute,
@@ -60,7 +67,13 @@ export function NavigationBottomSheet({
   const blockedPointIds = useNavigationStore((state) => state.blockedPointIds);
 
   const [viaSearch, setViaSearch] = useState("");
+  const [fromSearch, setFromSearch] = useState("");
+  const [toSearch, setToSearch] = useState("");
+  const [editingFrom, setEditingFrom] = useState(false);
+  const [editingTo, setEditingTo] = useState(false);
   const viaSearchResults = useMarkerSearch(viaSearch, 8);
+  const fromSearchResults = useMarkerSearch(fromSearch, 8);
+  const toSearchResults = useMarkerSearch(toSearch, 8);
 
   useEffect(() => {
     sheetRef.current?.snapToIndex(1);
@@ -103,6 +116,15 @@ export function NavigationBottomSheet({
     [pointsById, routePointIds, userLatitude, userLongitude],
   );
 
+  const hasActiveViaFilters = viaSearch.trim().length > 0 || viaPoints.length > 0;
+
+  const clearViaFilters = () => {
+    setViaSearch("");
+    for (const point of viaPoints) {
+      onRemoveVia(point.id);
+    }
+  };
+
   return (
     <View testID="navigation-bottom-sheet" style={styles.sheetHost}>
       <BottomSheet
@@ -143,18 +165,108 @@ export function NavigationBottomSheet({
             <Text variant="labelMedium" style={{ color: colors.onSurfaceVariant }}>
               FROM
             </Text>
-            <Text variant="titleMedium" style={{ color: colors.onSurface }}>
-              {fromPoint ? markerLabel(fromPoint) : "…"}
-            </Text>
+            <Pressable
+              onPress={() => {
+                setEditingFrom((current) => !current);
+                setEditingTo(false);
+              }}
+              testID="navigation-edit-from"
+            >
+              <Text variant="titleMedium" style={{ color: colors.onSurface }}>
+                {fromPoint ? markerLabel(fromPoint) : "…"}
+              </Text>
+              <Text variant="bodySmall" style={{ color: colors.primary }}>
+                {editingFrom ? "Cancel edit" : "Tap to change start"}
+              </Text>
+            </Pressable>
+            {editingFrom ? (
+              <>
+                <Searchbar
+                  placeholder="Search start marker"
+                  value={fromSearch}
+                  onChangeText={setFromSearch}
+                  style={styles.searchbar}
+                  testID="navigation-from-search"
+                />
+                {fromSearch.trim().length > 0 ? (
+                  <View style={styles.searchResults}>
+                    {fromSearchResults.map((point) => (
+                      <Pressable
+                        key={point.id}
+                        onPress={() => {
+                          if (point.id === toPoint?.id) {
+                            return;
+                          }
+                          onChangeFrom(point.id);
+                          setFromSearch("");
+                          setEditingFrom(false);
+                        }}
+                        style={styles.searchResultRow}
+                        testID={`navigation-from-result-${point.id}`}
+                      >
+                        <Text variant="bodyLarge" style={{ color: colors.onSurface }}>
+                          {markerLabel(point)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </>
+            ) : null}
             <Text
               variant="labelMedium"
               style={{ color: colors.onSurfaceVariant, marginTop: Spacing.two }}
             >
               TO
             </Text>
-            <Text variant="titleMedium" style={{ color: colors.onSurface }}>
-              {toPoint ? markerLabel(toPoint) : "…"}
-            </Text>
+            <Pressable
+              onPress={() => {
+                setEditingTo((current) => !current);
+                setEditingFrom(false);
+              }}
+              testID="navigation-edit-to"
+            >
+              <Text variant="titleMedium" style={{ color: colors.onSurface }}>
+                {toPoint ? markerLabel(toPoint) : "…"}
+              </Text>
+              <Text variant="bodySmall" style={{ color: colors.primary }}>
+                {editingTo ? "Cancel edit" : "Tap to change end"}
+              </Text>
+            </Pressable>
+            {editingTo ? (
+              <>
+                <Searchbar
+                  placeholder="Search destination marker"
+                  value={toSearch}
+                  onChangeText={setToSearch}
+                  style={styles.searchbar}
+                  testID="navigation-to-search"
+                />
+                {toSearch.trim().length > 0 ? (
+                  <View style={styles.searchResults}>
+                    {toSearchResults.map((point) => (
+                      <Pressable
+                        key={point.id}
+                        onPress={() => {
+                          if (point.id === fromPoint?.id) {
+                            return;
+                          }
+                          onChangeTo(point.id);
+                          setToSearch("");
+                          setEditingTo(false);
+                        }}
+                        style={styles.searchResultRow}
+                        testID={`navigation-to-result-${point.id}`}
+                      >
+                        <Text variant="bodyLarge" style={{ color: colors.onSurface }}>
+                          {markerLabel(point)}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : null}
+              </>
+            ) : null}
           </View>
 
           <View style={styles.section}>
@@ -169,6 +281,11 @@ export function NavigationBottomSheet({
               value={viaSearch}
               onChangeText={setViaSearch}
               style={styles.searchbar}
+            />
+            <ClearSearchFiltersButton
+              visible={hasActiveViaFilters}
+              onPress={clearViaFilters}
+              testID="navigation-via-clear-all"
             />
             {viaSearch.trim().length > 0 ? (
               <View style={styles.searchResults}>
@@ -234,7 +351,16 @@ export function NavigationBottomSheet({
             </View>
           ) : null}
 
-          {upcomingMarkers.length >= 2 ? <RouteElevationChart markers={upcomingMarkers} /> : null}
+          {upcomingMarkers.length >= 2 ? (
+            <RouteElevationChart
+              markers={upcomingMarkers}
+              routePointIds={routePointIds}
+              pointsById={pointsById}
+              userLatitude={userLatitude}
+              userLongitude={userLongitude}
+              userAltitude={userAltitude}
+            />
+          ) : null}
 
           {routeAlternatives.length > 0 ? (
             <View style={styles.section}>

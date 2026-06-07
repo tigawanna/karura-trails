@@ -5,6 +5,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { Searchbar, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { ClearSearchFiltersButton } from "@/components/common/clear-search-filters-button";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
 import { markerLabel, pointCoordinates } from "@/geo/nearest-marker";
 import { useMarkerSearch } from "@/hooks/use-marker-search";
@@ -36,6 +37,11 @@ export function MapMarkerSearch({ onSelectMarker }: MapMarkerSearchProps) {
     return `${results.length} result${results.length === 1 ? "" : "s"}`;
   }, [results.length, showResults]);
 
+  const clearSearch = () => {
+    setQuery("");
+    setExpanded(false);
+  };
+
   return (
     <View
       style={[styles.container, { top: insets.top + 8, right: insets.right + 8 }]}
@@ -49,15 +55,17 @@ export function MapMarkerSearch({ onSelectMarker }: MapMarkerSearchProps) {
           setExpanded(true);
         }}
         onFocus={() => setExpanded(true)}
-        onClearIconPress={() => {
-          setQuery("");
-          setExpanded(false);
-        }}
+        onClearIconPress={clearSearch}
         style={[styles.searchbar, { backgroundColor: colors.surface }]}
         inputStyle={{ color: colors.onSurface, minHeight: 0 }}
         iconColor={colors.onSurfaceVariant}
         placeholderTextColor={colors.onSurfaceVariant}
         testID="map-marker-search-input"
+      />
+      <ClearSearchFiltersButton
+        visible={query.trim().length > 0}
+        onPress={clearSearch}
+        testID="map-marker-search-clear-all"
       />
       {showResults ? (
         <View style={[styles.resultsPanel, { backgroundColor: colors.surface }]}>

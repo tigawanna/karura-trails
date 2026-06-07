@@ -137,11 +137,26 @@ export function useNavigationController(input: {
       return false;
     }
 
+    if (startId === targetPointId) {
+      Alert.alert("Same marker", "Choose a different destination than your start point.");
+      return false;
+    }
+
     beginNavigation({
       fromPointId: startId,
       toPointId: targetPointId,
     });
 
+    return true;
+  };
+
+  const navigateFromHere = (pointId: number) => {
+    if (pointId === toPointId) {
+      Alert.alert("Cannot set start", "This marker is already your destination.");
+      return false;
+    }
+
+    setFromPointId(pointId);
     return true;
   };
 
@@ -165,6 +180,7 @@ export function useNavigationController(input: {
     routePointIdSet,
     clearNavigation,
     startNavigationTo,
+    navigateFromHere,
     navigateToInstead,
     routeThroughHere,
     removeFromRoute,

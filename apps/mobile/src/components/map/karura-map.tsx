@@ -16,6 +16,7 @@ import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useMapBasemapPreference } from "@/hooks/use-map-basemap-preference";
 import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 import { calculateBBox, combineBBoxes, bboxCenter, bboxToZoom, geomParse } from "@/geo/geom-parse";
+import { filterMapVisibleRoutingPoints } from "@/geo/map-marker-visibility";
 import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM } from "@/geo/karura-bounds";
 import { normalizeMapColorScheme, resolveMapStyle } from "@/lib/map-libre/map-style";
 
@@ -28,6 +29,7 @@ interface KaruraMapProps {
   draftCoordinate?: { lng: number; lat: number } | null;
   focusPointId?: number | null;
   routePointIds?: number[];
+  isNavigating?: boolean;
   userLocation?: { latitude: number; longitude: number } | null;
   userHeading?: number | null;
   followUserLocation?: boolean;
@@ -44,6 +46,7 @@ export function KaruraMap({
   draftCoordinate = null,
   focusPointId = null,
   routePointIds = [],
+  isNavigating = false,
   userLocation = null,
   userHeading = null,
   followUserLocation = false,
@@ -62,6 +65,11 @@ export function KaruraMap({
   const [mapReady, setMapReady] = useState(false);
   const { enrichedPoints, pointsById, isLoading: graphLoading } = useRoutingGraphData();
   const location = userLocation ?? fallbackLocation?.coords ?? null;
+
+  const visibleRoutingPoints = useMemo(
+    () => filterMapVisibleRoutingPoints(enrichedPoints, isNavigating),
+    [enrichedPoints, isNavigating],
+  );
 
   useEffect(() => {
     setMapReady(false);
@@ -109,9 +117,9 @@ export function KaruraMap({
 
   const resolveMarkerAtCoordinate = useCallback(
     (latitude: number, longitude: number) => {
-      return findNearestMarker(enrichedPoints, latitude, longitude, MARKER_HIT_RADIUS_METERS);
+      return findNearestMarker(visibleRoutingPoints, latitude, longitude, MARKER_HIT_RADIUS_METERS);
     },
-    [enrichedPoints],
+    [visibleRoutingPoints],
   );
 
   const handlePress = useCallback(
@@ -192,7 +200,9 @@ export function KaruraMap({
             <RoutePreviewLayer routePointIds={routePointIds} pointsById={pointsById} />
           ) : null}
 
-          {enrichedPoints.length > 0 ? <RoutingPointsLayer points={enrichedPoints} /> : null}
+          {visibleRoutingPoints.length > 0 ? (
+            <RoutingPointsLayer points={visibleRoutingPoints} />
+          ) : null}
 
           {location ? (
             <UserLocationLayer

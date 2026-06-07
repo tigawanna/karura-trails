@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { Button, Chip, Searchbar, Text, useTheme } from "react-native-paper";
 
+import { ClearSearchFiltersButton } from "@/components/common/clear-search-filters-button";
 import { LoadingState } from "@/components/ui/loading-state";
 import { suggestRoutesFromPoint } from "@/geo/graph/neighbor-graph";
 import { markerLabel } from "@/geo/nearest-marker";
@@ -116,6 +117,17 @@ export function NavigatePlanScreen() {
     setViaRefs((current) => current.filter((entry) => entry !== ref));
   };
 
+  const hasActiveFields =
+    endRef != null || viaRefs.length > 0 || searchQuery.trim().length > 0 || activeField != null;
+
+  const clearAllFields = () => {
+    setStartRef(nearest?.marker.ref ?? null);
+    setEndRef(null);
+    setViaRefs([]);
+    setSearchQuery("");
+    setActiveField(null);
+  };
+
   if (isLoading || nearestLoading) {
     return <LoadingState message="Loading trail network…" testID="navigate-loading" />;
   }
@@ -132,6 +144,12 @@ export function NavigatePlanScreen() {
       <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
         Pick where you are, where you want to go, and optional stops along the way.
       </Text>
+
+      <ClearSearchFiltersButton
+        visible={hasActiveFields}
+        onPress={clearAllFields}
+        testID="navigate-clear-all"
+      />
 
       <View style={styles.fieldGroup}>
         <Text variant="labelLarge" style={{ color: colors.onSurface }}>

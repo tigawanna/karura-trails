@@ -4,7 +4,12 @@ import Svg, { Circle, Line, Polyline, Text as SvgText } from "react-native-svg";
 import { Text, useTheme } from "react-native-paper";
 
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
-import { markerLabel, pointCoordinates } from "@/geo/nearest-marker";
+import { markerLabel } from "@/geo/nearest-marker";
+import {
+  computeElevationAheadSummary,
+  formatElevationAheadSummary,
+  getUpcomingRouteMarkers,
+} from "@/geo/route-elevation-summary";
 import { Spacing } from "@/theme";
 
 const CHART_HEIGHT = 120;
@@ -12,51 +17,37 @@ const CHART_PADDING = { top: 12, right: 8, bottom: 28, left: 36 };
 
 interface RouteElevationChartProps {
   markers: EnrichedRoutingPoint[];
+  routePointIds: number[];
+  pointsById: Map<number, EnrichedRoutingPoint>;
+  userLatitude?: number | null;
+  userLongitude?: number | null;
+  userAltitude?: number | null;
 }
 
-export function getUpcomingRouteMarkers(
-  routePointIds: number[],
-  pointsById: Map<number, EnrichedRoutingPoint>,
-  userLatitude: number | null,
-  userLongitude: number | null,
-  limit = 10,
-): EnrichedRoutingPoint[] {
-  if (routePointIds.length === 0) {
-    return [];
-  }
+export { getUpcomingRouteMarkers } from "@/geo/route-elevation-summary";
 
-  let startIndex = 0;
-  if (userLatitude != null && userLongitude != null) {
-    let closestDistance = Number.POSITIVE_INFINITY;
-    for (let index = 0; index < routePointIds.length; index += 1) {
-      const point = pointsById.get(routePointIds[index]);
-      const coordinates = point ? pointCoordinates(point) : null;
-      if (!coordinates) {
-        continue;
-      }
-      const dLat = ((coordinates.latitude - userLatitude) * Math.PI) / 180;
-      const dLng = ((coordinates.longitude - userLongitude) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos((userLatitude * Math.PI) / 180) *
-          Math.cos((coordinates.latitude * Math.PI) / 180) *
-          Math.sin(dLng / 2) ** 2;
-      const distance = 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        startIndex = index;
-      }
-    }
-  }
-
-  return routePointIds
-    .slice(startIndex, startIndex + limit)
-    .map((id) => pointsById.get(id))
-    .filter((point): point is EnrichedRoutingPoint => point != null);
-}
-
-export function RouteElevationChart({ markers }: RouteElevationChartProps) {
+export function RouteElevationChart({
+  markers,
+  routePointIds,
+  pointsById,
+  userLatitude = null,
+  userLongitude = null,
+  userAltitude = null,
+}: RouteElevationChartProps) {
   const { colors } = useTheme();
+
+  const elevationSummary = useMemo(
+    () =>
+      computeElevationAheadSummary(
+        routePointIds,
+        pointsById,
+        userLatitude,
+        userLongitude,
+        userAltitude,
+        markers.length,
+      ),
+    [markers.length, pointsById, routePointIds, userAltitude, userLatitude, userLongitude],
+  );
 
   const chartData = useMemo(() => {
     const withElevation = markers.filter((marker) => marker.elevation != null);
@@ -96,12 +87,20 @@ export function RouteElevationChart({ markers }: RouteElevationChartProps) {
   });
 
   const polylinePoints = coordinates.map(({ x, y }) => `${x},${y}`).join(" ");
+  const summaryLabel = elevationSummary ? formatElevationAheadSummary(elevationSummary) : null;
 
   return (
     <View style={styles.container} testID="route-elevation-chart">
-      <Text variant="labelLarge" style={{ color: colors.onSurface }}>
-        Upcoming elevation
-      </Text>
+      <View style={styles.headerRow}>
+        <Text variant="labelLarge" style={{ color: colors.onSurface }}>
+          Upcoming elevation
+        </Text>
+        {summaryLabel ? (
+          <Text variant="labelMedium" style={{ color: colors.primary, fontWeight: "700" }}>
+            {summaryLabel}
+          </Text>
+        ) : null}
+      </View>
       <View style={[styles.chartFrame, { backgroundColor: colors.surfaceVariant }]}>
         <Svg width="100%" height={CHART_HEIGHT} viewBox={`0 0 ${chartWidth} ${CHART_HEIGHT}`}>
           <Line
@@ -154,6 +153,9 @@ export function RouteElevationChart({ markers }: RouteElevationChartProps) {
 const styles = StyleSheet.create({
   container: {
     gap: Spacing.two,
+  },
+  headerRow: {
+    gap: Spacing.one,
   },
   chartFrame: {
     borderRadius: 14,

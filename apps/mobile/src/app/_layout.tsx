@@ -6,6 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { PaperProvider, useTheme } from "react-native-paper";
 
 import { AnimatedSplashOverlay } from "@/components/splash/animated-icon";
+import { MarkerActionMenuHost } from "@/components/map/marker-action-menu-host";
 import { InitDatabase } from "@/lib/drizzle/InitDatabase";
 import { queryClient } from "@/lib/tanstack/query/client";
 import {
@@ -84,6 +85,7 @@ export default function RootLayout() {
             <InitDatabase>
               <AnimatedSplashOverlay />
               <DrawerNavigator />
+              <MarkerActionMenuHost />
               <StatusBar style={isDarkMode ? "light" : "dark"} />
             </InitDatabase>
           </QueryClientProvider>

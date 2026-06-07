@@ -4,6 +4,7 @@ import { StyleSheet, View } from "react-native";
 
 import { capturedPointsQueryOptions } from "@/data-access-layer/points";
 import { AddMarkerFab } from "@/components/map/add-marker-fab";
+import { MapBackToRouteButton } from "@/components/map/map-back-to-route-button";
 import { KaruraMap } from "@/components/map/karura-map";
 import { MapLocationControls } from "@/components/map/map-location-controls";
 import { MapMarkerSearch } from "@/components/map/map-marker-search";
@@ -24,7 +25,11 @@ import type { MarkerCaptureDraft } from "@/hooks/use-marker-capture";
 import { useNavigationController } from "@/hooks/use-navigation-controller";
 import { useTrailOnTrack } from "@/hooks/use-trail-on-track";
 import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
-import { buildMarkerNavigationActions, showMarkerActionMenu } from "@/lib/ui/marker-action-menu";
+import {
+  buildMarkerNavigationActions,
+  confirmStartNavigationTo,
+  showMarkerActionMenu,
+} from "@/lib/ui/marker-action-menu";
 import { useNavigationStore } from "@/stores/navigation-store";
 
 export function MapWithTrailSheet() {
@@ -40,6 +45,7 @@ export function MapWithTrailSheet() {
   const { data: capturedPoints = [] } = useQuery(capturedPointsQueryOptions);
 
   const [overlayMarkerId, setOverlayMarkerId] = useState<number | null>(null);
+  const [pinnedCameraPointId, setPinnedCameraPointId] = useState<number | null>(null);
   const [highlightedRoutePointId, setHighlightedRoutePointId] = useState<number | null>(null);
   const [captureVisible, setCaptureVisible] = useState(false);
   const [captureDraft, setCaptureDraft] = useState<MarkerCaptureDraft | null>(null);
@@ -52,6 +58,8 @@ export function MapWithTrailSheet() {
   const userLatitude = activeLocation?.coords.latitude ?? staticLocation?.coords.latitude ?? null;
   const userLongitude =
     activeLocation?.coords.longitude ?? staticLocation?.coords.longitude ?? null;
+
+  const userAltitude = activeLocation?.coords.altitude ?? staticLocation?.coords.altitude ?? null;
 
   const navigation = useNavigationController({
     enrichedPoints,
@@ -88,12 +96,19 @@ export function MapWithTrailSheet() {
   );
 
   const mapFocusPointId = followUser
-    ? (highlightedRoutePointId ?? overlayMarkerId ?? navigation.toPointId ?? null)
-    : (highlightedRoutePointId ??
+    ? (highlightedRoutePointId ??
+      overlayMarkerId ??
+      pinnedCameraPointId ??
+      navigation.toPointId ??
+      null)
+    : (pinnedCameraPointId ??
+      highlightedRoutePointId ??
       overlayMarkerId ??
       navigation.toPointId ??
       match?.marker.id ??
       null);
+
+  const isViewingOffRoute = showNavigationSheet && pinnedCameraPointId != null && !followUser;
 
   const mapLocation = useMemo(() => {
     if (userLatitude == null || userLongitude == null) {
@@ -131,8 +146,28 @@ export function MapWithTrailSheet() {
     setFollowUser(true);
     setRecenterKey((current) => current + 1);
     setOverlayMarkerId(null);
+    setPinnedCameraPointId(null);
     setHighlightedRoutePointId(null);
   }, []);
+
+  const handleBackToRoute = useCallback(() => {
+    setFollowUser(false);
+    setOverlayMarkerId(null);
+    setPinnedCameraPointId(navigation.toPointId);
+    setHighlightedRoutePointId(null);
+  }, [navigation.toPointId]);
+
+  const setLocationAtMarker = useCallback(
+    (markerId: number) => {
+      const marker = pointsById.get(markerId);
+      const coordinates = marker ? pointCoordinates(marker) : null;
+      if (!coordinates) {
+        return;
+      }
+      manuallySetLocation(coordinates.latitude, coordinates.longitude);
+    },
+    [manuallySetLocation, pointsById],
+  );
 
   const handleRefreshLocation = useCallback(() => {
     refreshLocation();
@@ -140,20 +175,12 @@ export function MapWithTrailSheet() {
     setRecenterKey((current) => current + 1);
   }, [refreshLocation]);
 
-  const handleSearchSelectMarker = useCallback(
-    (marker: EnrichedRoutingPoint) => {
-      const coordinates = pointCoordinates(marker);
-      if (!coordinates) {
-        return;
-      }
-
-      manuallySetLocation(coordinates.latitude, coordinates.longitude);
-      setFollowUser(false);
-      setOverlayMarkerId(marker.id);
-      setHighlightedRoutePointId(null);
-    },
-    [manuallySetLocation],
-  );
+  const handleSearchSelectMarker = useCallback((marker: EnrichedRoutingPoint) => {
+    setFollowUser(false);
+    setPinnedCameraPointId(marker.id);
+    setOverlayMarkerId(marker.id);
+    setHighlightedRoutePointId(null);
+  }, []);
 
   const openCapture = useCallback((draft: MarkerCaptureDraft) => {
     setCaptureDraft(draft);
@@ -207,6 +234,7 @@ export function MapWithTrailSheet() {
 
   const handleMarkerPress = useCallback((markerId: number) => {
     setFollowUser(false);
+    setPinnedCameraPointId(markerId);
     setOverlayMarkerId(markerId);
   }, []);
 
@@ -225,13 +253,18 @@ export function MapWithTrailSheet() {
         isOnActiveRoute: navigation.isOnActiveRoute(markerId),
         isViaPoint: navigation.isViaPoint(markerId),
         isBlockedPoint: navigation.isBlockedPoint(markerId),
-        onNavigateTo: () => startNavigationTo(markerId),
+        onNavigateTo: () =>
+          confirmStartNavigationTo(markerLabel(marker), () => startNavigationTo(markerId)),
+        onNavigateFrom: () => navigation.navigateFromHere(markerId),
+        onSetLocationHere: () => setLocationAtMarker(markerId),
         onNavigateHereInstead: () => {
           navigation.navigateToInstead(markerId);
+          setPinnedCameraPointId(markerId);
           setOverlayMarkerId(markerId);
         },
         onRouteThroughHere: () => {
           navigation.routeThroughHere(markerId);
+          setPinnedCameraPointId(markerId);
           setOverlayMarkerId(markerId);
         },
         onRemoveFromRoute: () => navigation.removeFromRoute(markerId),
@@ -245,7 +278,7 @@ export function MapWithTrailSheet() {
         actions,
       });
     },
-    [navigation, pointsById, startNavigationTo],
+    [navigation, pointsById, setLocationAtMarker, startNavigationTo],
   );
 
   const handleUseGps = useCallback(() => {
@@ -271,6 +304,7 @@ export function MapWithTrailSheet() {
         draftCoordinate={captureVisible ? draftCoordinate : null}
         focusPointId={mapFocusPointId}
         routePointIds={navigation.routePointIds}
+        isNavigating={showNavigationSheet}
         userLocation={mapLocation}
         userHeading={heading}
         followUserLocation={followUser}
@@ -282,6 +316,7 @@ export function MapWithTrailSheet() {
       />
       <MapDrawerButton />
       <MapMarkerSearch onSelectMarker={handleSearchSelectMarker} />
+      <MapBackToRouteButton visible={isViewingOffRoute} onPress={handleBackToRoute} />
       <MapLocationControls
         followUser={followUser}
         isRefreshing={isRefreshing}
@@ -302,8 +337,12 @@ export function MapWithTrailSheet() {
           userLongitude={userLongitude}
           onHighlightPoint={(pointId) => {
             setFollowUser(false);
+            setPinnedCameraPointId(pointId);
             setHighlightedRoutePointId(pointId);
           }}
+          userAltitude={userAltitude}
+          onChangeFrom={navigation.navigateFromHere}
+          onChangeTo={navigation.navigateToInstead}
           onAddVia={navigation.routeThroughHere}
           onRemoveVia={navigation.removeViaPoint}
           onSelectRoute={(pointIds, distance) =>
@@ -334,8 +373,14 @@ export function MapWithTrailSheet() {
           initialSnapIndex={1}
           dismissible
           overlay
+          userSelected
           onDismiss={() => setOverlayMarkerId(null)}
-          onNavigateTo={() => startNavigationTo(overlayMarker.id)}
+          onSetLocationHere={() => setLocationAtMarker(overlayMarker.id)}
+          onNavigateTo={() =>
+            confirmStartNavigationTo(markerLabel(overlayMarker), () =>
+              startNavigationTo(overlayMarker.id),
+            )
+          }
           onClearRoute={navigation.clearNavigation}
         />
       ) : null}

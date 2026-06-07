@@ -5,6 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import { PaperProvider, useTheme } from "react-native-paper";
 
 import { AnimatedSplashOverlay } from "@/components/splash/animated-icon";
+import { MarkerActionMenuHost } from "@/components/map/marker-action-menu-host";
 import { InitDatabase } from "@/lib/drizzle/InitDatabase";
 import { queryClient } from "@/lib/tanstack/query/client";
 import {
@@ -26,7 +27,7 @@ function WebStack() {
       }}
     >
       <Stack.Screen name="index" options={{ headerShown: false, title: "Map" }} />
-      <Stack.Screen name="trails" options={{ title: "Trails" }} />
+      <Stack.Screen name="trails" options={{ title: "Markers" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
     </Stack>
   );
@@ -44,6 +45,7 @@ export default function RootLayout() {
           <InitDatabase>
             <AnimatedSplashOverlay />
             <WebStack />
+            <MarkerActionMenuHost />
             <StatusBar style={isDarkMode ? "light" : "dark"} />
           </InitDatabase>
         </QueryClientProvider>
