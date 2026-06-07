@@ -2,10 +2,13 @@ import { useMemo } from "react";
 
 import { findNearestMarker, isNearKarura } from "@/geo/nearest-marker";
 import { useDeviceLocation } from "@/hooks/use-device-location";
+import { useLiveLocation } from "@/hooks/use-live-location";
 import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 
 export function useNearestMarker() {
-  const { location, errorMsg, isLoading: locationLoading } = useDeviceLocation();
+  const { location: staticLocation, errorMsg, isLoading: locationLoading } = useDeviceLocation();
+  const liveLocation = useLiveLocation(true);
+  const location = liveLocation ?? staticLocation;
   const { enrichedPoints, isLoading: graphLoading } = useRoutingGraphData();
 
   const nearKarura = useMemo(() => {

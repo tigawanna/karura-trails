@@ -48,7 +48,7 @@ function DrawerNavigator() {
       <Drawer.Screen
         name="trails"
         options={{
-          drawerLabel: "All markers",
+          drawerLabel: "Markers",
           title: "Markers",
         }}
       />

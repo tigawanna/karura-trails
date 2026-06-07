@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
-import { useTheme } from "react-native-paper";
+
+const USER_LOCATION_RED = "#EA4335";
 
 interface UserLocationLayerProps {
   longitude: number;
@@ -9,7 +10,7 @@ interface UserLocationLayerProps {
 }
 
 export function UserLocationLayer({ longitude, latitude, heading = null }: UserLocationLayerProps) {
-  const { colors } = useTheme();
+  const hasHeading = heading != null && Number.isFinite(heading);
 
   const pointData: GeoJSON.Feature = useMemo(
     () => ({
@@ -17,10 +18,10 @@ export function UserLocationLayer({ longitude, latitude, heading = null }: UserL
       geometry: { type: "Point", coordinates: [longitude, latitude] },
       properties: {
         heading: heading ?? 0,
-        hasHeading: heading != null && Number.isFinite(heading),
+        hasHeading,
       },
     }),
-    [heading, latitude, longitude],
+    [hasHeading, heading, latitude, longitude],
   );
 
   return (
@@ -30,9 +31,9 @@ export function UserLocationLayer({ longitude, latitude, heading = null }: UserL
           type="circle"
           id="user-location-pulse-circle"
           paint={{
-            "circle-radius": 22,
-            "circle-color": colors.primary,
-            "circle-opacity": 0.12,
+            "circle-radius": 18,
+            "circle-color": USER_LOCATION_RED,
+            "circle-opacity": 0.15,
           }}
         />
       </GeoJSONSource>
@@ -41,41 +42,19 @@ export function UserLocationLayer({ longitude, latitude, heading = null }: UserL
         <Layer
           type="symbol"
           id="user-location-arrow"
-          filter={["==", ["get", "hasHeading"], true]}
           layout={{
             "text-field": "▲",
-            "text-size": 34,
-            "text-rotate": ["get", "heading"],
+            "text-size": 28,
+            "text-rotate": hasHeading ? ["get", "heading"] : 0,
             "text-rotation-alignment": "map",
             "text-allow-overlap": true,
             "text-ignore-placement": true,
-            "text-offset": [0, -0.15],
+            "text-offset": [0, 0],
           }}
           paint={{
-            "text-color": colors.primary,
+            "text-color": USER_LOCATION_RED,
             "text-halo-color": "#ffffff",
-            "text-halo-width": 3,
-          }}
-        />
-      </GeoJSONSource>
-
-      <GeoJSONSource id="user-location-dot" data={pointData}>
-        <Layer
-          type="circle"
-          id="user-location-outer"
-          paint={{
-            "circle-radius": 11,
-            "circle-color": "#FFFFFF",
-            "circle-stroke-width": 2,
-            "circle-stroke-color": colors.primary,
-          }}
-        />
-        <Layer
-          type="circle"
-          id="user-location-inner"
-          paint={{
-            "circle-radius": 7,
-            "circle-color": colors.primary,
+            "text-halo-width": 2.5,
           }}
         />
       </GeoJSONSource>

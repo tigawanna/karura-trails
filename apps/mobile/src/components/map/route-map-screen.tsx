@@ -3,13 +3,14 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { KaruraMap } from "@/components/map/karura-map";
+import { MapLocationControls } from "@/components/map/map-location-controls";
 import {
   MarkerDetailSheet,
   markerDistanceFromLocation,
 } from "@/components/map/marker-detail-sheet";
 import { NavigationBottomSheet } from "@/components/map/navigation-bottom-sheet";
 import { LoadingState } from "@/components/ui/loading-state";
-import { markerLabel } from "@/geo/nearest-marker";
+import { isNearKarura, markerLabel } from "@/geo/nearest-marker";
 import { useDeviceHeading } from "@/hooks/use-device-heading";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useLiveLocation } from "@/hooks/use-live-location";
@@ -22,12 +23,14 @@ import { buildMarkerNavigationActions, showMarkerActionMenu } from "@/lib/ui/mar
 
 export function RouteMapScreen() {
   const params = useLocalSearchParams<{ from?: string; to?: string; via?: string }>();
-  const { location: staticLocation } = useDeviceLocation();
+  const { location: staticLocation, errorMsg, isRefreshing, refreshLocation } = useDeviceLocation();
   const { enrichedPoints, pointsById, pointsByRef, isLoading } = useRoutingGraphData();
 
   const [detailMarkerId, setDetailMarkerId] = useState<number | null>(null);
   const [highlightedRoutePointId, setHighlightedRoutePointId] = useState<number | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  const [followUser, setFollowUser] = useState(false);
+  const [recenterKey, setRecenterKey] = useState(0);
 
   const applyRouteResult = useNavigationStore((state) => state.applyRouteResult);
 
@@ -80,12 +83,13 @@ export function RouteMapScreen() {
     [navigation.toPointId, pointsById],
   );
 
-  const focusPointId =
-    highlightedRoutePointId ??
-    detailMarkerId ??
-    navigation.toPointId ??
-    navigation.fromPointId ??
-    null;
+  const focusPointId = followUser
+    ? (highlightedRoutePointId ?? detailMarkerId ?? navigation.toPointId ?? null)
+    : (highlightedRoutePointId ??
+      detailMarkerId ??
+      navigation.toPointId ??
+      navigation.fromPointId ??
+      null);
   const detailMarker = detailMarkerId != null ? (pointsById.get(detailMarkerId) ?? null) : null;
 
   const mapLocation = useMemo(() => {
@@ -95,12 +99,41 @@ export function RouteMapScreen() {
     return { latitude: userLatitude, longitude: userLongitude };
   }, [userLatitude, userLongitude]);
 
+  const nearKarura = useMemo(() => {
+    if (userLatitude == null || userLongitude == null) {
+      return false;
+    }
+    return isNearKarura(userLatitude, userLongitude);
+  }, [userLatitude, userLongitude]);
+
   const distanceMeters = useMemo(() => {
     if (!detailMarker || !mapLocation) {
       return null;
     }
     return markerDistanceFromLocation(detailMarker, mapLocation.latitude, mapLocation.longitude);
   }, [detailMarker, mapLocation]);
+
+  const handleUserInteraction = useCallback(() => {
+    setFollowUser(false);
+  }, []);
+
+  const handleRecenter = useCallback(() => {
+    setFollowUser(true);
+    setRecenterKey((current) => current + 1);
+    setDetailMarkerId(null);
+    setHighlightedRoutePointId(null);
+  }, []);
+
+  const handleRefreshLocation = useCallback(() => {
+    refreshLocation();
+    setFollowUser(true);
+    setRecenterKey((current) => current + 1);
+  }, [refreshLocation]);
+
+  const handleMarkerPress = useCallback((pointId: number) => {
+    setFollowUser(false);
+    setDetailMarkerId(pointId);
+  }, []);
 
   const handleMarkerLongPress = useCallback(
     (pointId: number) => {
@@ -155,25 +188,20 @@ export function RouteMapScreen() {
         routePointIds={navigation.routePointIds}
         userLocation={mapLocation}
         userHeading={heading}
+        followUserLocation={followUser}
+        recenterKey={recenterKey}
         enableMarkerCapture={false}
-        onMarkerPress={setDetailMarkerId}
+        onMarkerPress={handleMarkerPress}
         onMarkerLongPress={handleMarkerLongPress}
+        onUserInteraction={handleUserInteraction}
       />
-      {detailMarker ? (
-        <MarkerDetailSheet
-          marker={detailMarker}
-          distanceMeters={distanceMeters}
-          isLoading={false}
-          locationError={null}
-          nearKarura
-          routeIncludesMarker={navigation.isOnActiveRoute(detailMarker.id)}
-          routeSummary={navigation.routeSummary}
-          initialSnapIndex={1}
-          dismissible
-          onDismiss={() => setDetailMarkerId(null)}
-          onClearRoute={navigation.clearNavigation}
-        />
-      ) : navigation.toPointId != null ? (
+      <MapLocationControls
+        followUser={followUser}
+        isRefreshing={isRefreshing}
+        onRecenter={handleRecenter}
+        onRefresh={handleRefreshLocation}
+      />
+      {navigation.toPointId != null ? (
         <NavigationBottomSheet
           fromPoint={fromPoint}
           toPoint={toPoint}
@@ -182,12 +210,35 @@ export function RouteMapScreen() {
           distanceMeters={navigation.distanceMeters}
           isComputing={!navigation.isNavigating}
           highlightedPointId={highlightedRoutePointId}
-          onHighlightPoint={setHighlightedRoutePointId}
+          userLatitude={userLatitude}
+          userLongitude={userLongitude}
+          onHighlightPoint={(pointId) => {
+            setFollowUser(false);
+            setHighlightedRoutePointId(pointId);
+          }}
           onAddVia={navigation.routeThroughHere}
           onRemoveVia={navigation.removeViaPoint}
           onSelectRoute={(pointIds, distance) =>
             applyRouteResult({ pointIds, distanceMeters: distance })
           }
+          onClearRoute={navigation.clearNavigation}
+        />
+      ) : null}
+      {detailMarker ? (
+        <MarkerDetailSheet
+          marker={detailMarker}
+          distanceMeters={distanceMeters}
+          isLoading={false}
+          locationError={errorMsg}
+          nearKarura={nearKarura}
+          lastKnownLatitude={userLatitude}
+          lastKnownLongitude={userLongitude}
+          routeIncludesMarker={navigation.isOnActiveRoute(detailMarker.id)}
+          routeSummary={navigation.routeSummary}
+          initialSnapIndex={1}
+          dismissible
+          overlay
+          onDismiss={() => setDetailMarkerId(null)}
           onClearRoute={navigation.clearNavigation}
         />
       ) : null}

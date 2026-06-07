@@ -21,6 +21,7 @@ import { normalizeMapColorScheme, resolveMapStyle } from "@/lib/map-libre/map-st
 
 const MARKER_HIT_RADIUS_METERS = 35;
 const FOCUS_MARKER_ZOOM = 17.5;
+const FOLLOW_USER_ZOOM = 17;
 
 interface KaruraMapProps {
   capturedPoints?: PointWithGeometry[];
@@ -29,10 +30,13 @@ interface KaruraMapProps {
   routePointIds?: number[];
   userLocation?: { latitude: number; longitude: number } | null;
   userHeading?: number | null;
+  followUserLocation?: boolean;
+  recenterKey?: number;
   enableMarkerCapture?: boolean;
   onLongPress?: (lng: number, lat: number) => void;
   onMarkerPress?: (pointId: number) => void;
   onMarkerLongPress?: (pointId: number) => void;
+  onUserInteraction?: () => void;
 }
 
 export function KaruraMap({
@@ -42,10 +46,13 @@ export function KaruraMap({
   routePointIds = [],
   userLocation = null,
   userHeading = null,
+  followUserLocation = false,
+  recenterKey = 0,
   enableMarkerCapture = true,
   onLongPress,
   onMarkerPress,
   onMarkerLongPress,
+  onUserInteraction,
 }: KaruraMapProps) {
   const { colors } = useTheme();
   const colorScheme = normalizeMapColorScheme(useColorScheme());
@@ -63,6 +70,14 @@ export function KaruraMap({
   const focusPoint = focusPointId != null ? pointsById.get(focusPointId) : null;
 
   const camera = useMemo(() => {
+    if (followUserLocation && location) {
+      return {
+        center: [location.longitude, location.latitude] as [number, number],
+        zoom: FOLLOW_USER_ZOOM,
+        duration: mapReady ? (recenterKey > 0 ? 700 : 250) : 0,
+      };
+    }
+
     if (focusPoint) {
       const geometry = geomParse(focusPoint.geom);
       const coordinates = geometry?.coordinates;
@@ -90,7 +105,7 @@ export function KaruraMap({
       zoom: bboxToZoom(combined),
       duration: mapReady ? 1000 : 0,
     };
-  }, [enrichedPoints, focusPoint, mapReady]);
+  }, [enrichedPoints, focusPoint, followUserLocation, location, mapReady, recenterKey]);
 
   const resolveMarkerAtCoordinate = useCallback(
     (latitude: number, longitude: number) => {
@@ -101,17 +116,19 @@ export function KaruraMap({
 
   const handlePress = useCallback(
     (event: NativeSyntheticEvent<PressEvent>) => {
+      onUserInteraction?.();
       const [longitude, latitude] = event.nativeEvent.lngLat;
       const hit = resolveMarkerAtCoordinate(latitude, longitude);
       if (hit) {
         onMarkerPress?.(hit.marker.id);
       }
     },
-    [onMarkerPress, resolveMarkerAtCoordinate],
+    [onMarkerPress, onUserInteraction, resolveMarkerAtCoordinate],
   );
 
   const handleLongPress = useCallback(
     (event: NativeSyntheticEvent<PressEvent>) => {
+      onUserInteraction?.();
       const [longitude, latitude] = event.nativeEvent.lngLat;
       const hit = resolveMarkerAtCoordinate(latitude, longitude);
       if (hit) {
@@ -124,7 +141,13 @@ export function KaruraMap({
         onLongPress?.(longitude, latitude);
       }
     },
-    [enableMarkerCapture, onLongPress, onMarkerLongPress, resolveMarkerAtCoordinate],
+    [
+      enableMarkerCapture,
+      onLongPress,
+      onMarkerLongPress,
+      onUserInteraction,
+      resolveMarkerAtCoordinate,
+    ],
   );
 
   const graphLoadingState = graphLoading;
@@ -152,8 +175,18 @@ export function KaruraMap({
           onDidFinishLoadingMap={() => setMapReady(true)}
           onPress={handlePress}
           onLongPress={handleLongPress}
+          onRegionWillChange={onUserInteraction}
         >
-          <Camera center={camera.center} zoom={camera.zoom} duration={camera.duration} />
+          <Camera
+            key={
+              followUserLocation
+                ? `follow-${recenterKey}-${location?.latitude}-${location?.longitude}`
+                : `focus-${focusPointId}`
+            }
+            center={camera.center}
+            zoom={camera.zoom}
+            duration={camera.duration}
+          />
 
           {routePointIds.length > 1 ? (
             <RoutePreviewLayer routePointIds={routePointIds} pointsById={pointsById} />

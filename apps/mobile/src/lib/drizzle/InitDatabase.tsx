@@ -1,7 +1,13 @@
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
+import { landmarkTypesQueryOptions } from "@/data-access-layer/landmark-types";
+import {
+  enrichedRoutingPointsQueryOptions,
+  neighborLinksQueryOptions,
+} from "@/data-access-layer/routing-graph";
 import migrations from "@/drizzle/migrations";
 import { loadRoutingGraphSeed } from "@/geo/load-routing-seed";
+import { queryClient } from "@/lib/tanstack/query/client";
 import { migrate } from "drizzle-orm/op-sqlite/migrator";
 import { useEffect, useState } from "react";
 import { db, ensureSpatialMetadata, resetLocalDatabase } from "./client";
@@ -49,6 +55,14 @@ export function InitDatabase({ children }: InitDatabaseProps) {
         await seedLandmarkTypesFromJson(db, seed);
         await seedRoutingGraphFromJson(db, seed);
         await backfillMarkerKinds(db);
+        if (cancelled) {
+          return;
+        }
+        await Promise.all([
+          queryClient.prefetchQuery(enrichedRoutingPointsQueryOptions),
+          queryClient.prefetchQuery(neighborLinksQueryOptions),
+          queryClient.prefetchQuery(landmarkTypesQueryOptions),
+        ]);
         if (cancelled) {
           return;
         }

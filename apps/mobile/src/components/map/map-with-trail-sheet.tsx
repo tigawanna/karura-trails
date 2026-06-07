@@ -5,6 +5,8 @@ import { StyleSheet, View } from "react-native";
 import { capturedPointsQueryOptions } from "@/data-access-layer/points";
 import { AddMarkerFab } from "@/components/map/add-marker-fab";
 import { KaruraMap } from "@/components/map/karura-map";
+import { MapLocationControls } from "@/components/map/map-location-controls";
+import { MapMarkerSearch } from "@/components/map/map-marker-search";
 import {
   MarkerDetailSheet,
   markerDistanceFromLocation,
@@ -12,28 +14,37 @@ import {
 import { NavigationBottomSheet } from "@/components/map/navigation-bottom-sheet";
 import { MapDrawerButton } from "@/components/map/map-drawer-button";
 import { MarkerCaptureSheet } from "@/components/markers/marker-capture-sheet";
-import { markerLabel } from "@/geo/nearest-marker";
+import { TrailOnTrackSheet } from "@/components/trails/trail-on-track-sheet";
+import { markerLabel, pointCoordinates, isNearKarura } from "@/geo/nearest-marker";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
 import { useDeviceHeading } from "@/hooks/use-device-heading";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useLiveLocation } from "@/hooks/use-live-location";
 import type { MarkerCaptureDraft } from "@/hooks/use-marker-capture";
 import { useNavigationController } from "@/hooks/use-navigation-controller";
-import { useNearestMarker } from "@/hooks/use-nearest-marker";
+import { useTrailOnTrack } from "@/hooks/use-trail-on-track";
 import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 import { buildMarkerNavigationActions, showMarkerActionMenu } from "@/lib/ui/marker-action-menu";
 import { useNavigationStore } from "@/stores/navigation-store";
 
 export function MapWithTrailSheet() {
-  const { nearest, nearKarura, errorMsg, isLoading } = useNearestMarker();
-  const { location: staticLocation } = useDeviceLocation();
+  const {
+    location: staticLocation,
+    errorMsg,
+    isRefreshing,
+    refreshLocation,
+    manuallySetLocation,
+  } = useDeviceLocation();
+  const { match, isLoading: trackLoading } = useTrailOnTrack();
   const { enrichedPoints, pointsById } = useRoutingGraphData();
   const { data: capturedPoints = [] } = useQuery(capturedPointsQueryOptions);
 
-  const [selectedMarkerId, setSelectedMarkerId] = useState<number | null>(null);
+  const [overlayMarkerId, setOverlayMarkerId] = useState<number | null>(null);
   const [highlightedRoutePointId, setHighlightedRoutePointId] = useState<number | null>(null);
   const [captureVisible, setCaptureVisible] = useState(false);
   const [captureDraft, setCaptureDraft] = useState<MarkerCaptureDraft | null>(null);
+  const [followUser, setFollowUser] = useState(true);
+  const [recenterKey, setRecenterKey] = useState(0);
 
   const applyRouteResult = useNavigationStore((state) => state.applyRouteResult);
 
@@ -50,25 +61,20 @@ export function MapWithTrailSheet() {
 
   const heading = useDeviceHeading(Boolean(userLatitude && userLongitude));
 
+  const showNavigationSheet = navigation.toPointId != null;
+
   useEffect(() => {
-    if (selectedMarkerId == null && nearest?.marker.id) {
-      setSelectedMarkerId(nearest.marker.id);
+    if (!showNavigationSheet) {
+      setHighlightedRoutePointId(null);
     }
-  }, [nearest?.marker.id, selectedMarkerId]);
+  }, [showNavigationSheet]);
 
-  const selectedMarker = useMemo((): EnrichedRoutingPoint | null => {
-    if (selectedMarkerId == null) {
-      return nearest?.marker ?? null;
+  const overlayMarker = useMemo((): EnrichedRoutingPoint | null => {
+    if (overlayMarkerId == null) {
+      return null;
     }
-    return pointsById.get(selectedMarkerId) ?? nearest?.marker ?? null;
-  }, [nearest?.marker, pointsById, selectedMarkerId]);
-
-  const displayMarker = useMemo(() => {
-    if (navigation.toPointId != null) {
-      return pointsById.get(navigation.toPointId) ?? selectedMarker;
-    }
-    return selectedMarker;
-  }, [navigation.toPointId, pointsById, selectedMarker]);
+    return pointsById.get(overlayMarkerId) ?? null;
+  }, [overlayMarkerId, pointsById]);
 
   const fromPoint = useMemo(
     () =>
@@ -81,16 +87,13 @@ export function MapWithTrailSheet() {
     [navigation.toPointId, pointsById],
   );
 
-  const showNavigationSheet = navigation.toPointId != null;
-
-  useEffect(() => {
-    if (!showNavigationSheet) {
-      setHighlightedRoutePointId(null);
-    }
-  }, [showNavigationSheet]);
-
-  const mapFocusPointId =
-    highlightedRoutePointId ?? displayMarker?.id ?? navigation.toPointId ?? null;
+  const mapFocusPointId = followUser
+    ? (highlightedRoutePointId ?? overlayMarkerId ?? navigation.toPointId ?? null)
+    : (highlightedRoutePointId ??
+      overlayMarkerId ??
+      navigation.toPointId ??
+      match?.marker.id ??
+      null);
 
   const mapLocation = useMemo(() => {
     if (userLatitude == null || userLongitude == null) {
@@ -99,12 +102,19 @@ export function MapWithTrailSheet() {
     return { latitude: userLatitude, longitude: userLongitude };
   }, [userLatitude, userLongitude]);
 
-  const distanceMeters = useMemo(() => {
-    if (!displayMarker || !mapLocation || !nearKarura) {
-      return nearest?.distanceMeters ?? null;
+  const nearKarura = useMemo(() => {
+    if (userLatitude == null || userLongitude == null) {
+      return false;
     }
-    return markerDistanceFromLocation(displayMarker, mapLocation.latitude, mapLocation.longitude);
-  }, [displayMarker, mapLocation, nearKarura, nearest?.distanceMeters]);
+    return isNearKarura(userLatitude, userLongitude);
+  }, [userLatitude, userLongitude]);
+
+  const overlayDistanceMeters = useMemo(() => {
+    if (!overlayMarker || !mapLocation) {
+      return null;
+    }
+    return markerDistanceFromLocation(overlayMarker, mapLocation.latitude, mapLocation.longitude);
+  }, [overlayMarker, mapLocation]);
 
   const draftCoordinate = useMemo(() => {
     if (!captureDraft) {
@@ -112,6 +122,38 @@ export function MapWithTrailSheet() {
     }
     return { lng: captureDraft.lng, lat: captureDraft.lat };
   }, [captureDraft]);
+
+  const handleUserInteraction = useCallback(() => {
+    setFollowUser(false);
+  }, []);
+
+  const handleRecenter = useCallback(() => {
+    setFollowUser(true);
+    setRecenterKey((current) => current + 1);
+    setOverlayMarkerId(null);
+    setHighlightedRoutePointId(null);
+  }, []);
+
+  const handleRefreshLocation = useCallback(() => {
+    refreshLocation();
+    setFollowUser(true);
+    setRecenterKey((current) => current + 1);
+  }, [refreshLocation]);
+
+  const handleSearchSelectMarker = useCallback(
+    (marker: EnrichedRoutingPoint) => {
+      const coordinates = pointCoordinates(marker);
+      if (!coordinates) {
+        return;
+      }
+
+      manuallySetLocation(coordinates.latitude, coordinates.longitude);
+      setFollowUser(false);
+      setOverlayMarkerId(marker.id);
+      setHighlightedRoutePointId(null);
+    },
+    [manuallySetLocation],
+  );
 
   const openCapture = useCallback((draft: MarkerCaptureDraft) => {
     setCaptureDraft(draft);
@@ -158,10 +200,15 @@ export function MapWithTrailSheet() {
         return;
       }
 
-      setSelectedMarkerId(markerId);
+      setOverlayMarkerId(null);
     },
     [navigation, pointsById],
   );
+
+  const handleMarkerPress = useCallback((markerId: number) => {
+    setFollowUser(false);
+    setOverlayMarkerId(markerId);
+  }, []);
 
   const handleMarkerLongPress = useCallback(
     (markerId: number) => {
@@ -181,16 +228,16 @@ export function MapWithTrailSheet() {
         onNavigateTo: () => startNavigationTo(markerId),
         onNavigateHereInstead: () => {
           navigation.navigateToInstead(markerId);
-          setSelectedMarkerId(markerId);
+          setOverlayMarkerId(markerId);
         },
         onRouteThroughHere: () => {
           navigation.routeThroughHere(markerId);
-          setSelectedMarkerId(markerId);
+          setOverlayMarkerId(markerId);
         },
         onRemoveFromRoute: () => navigation.removeFromRoute(markerId),
         onRemoveViaStop: () => navigation.removeViaPoint(markerId),
         onUnblockPoint: () => navigation.unblockPoint(markerId),
-        onViewDetails: () => setSelectedMarkerId(markerId),
+        onViewDetails: () => setOverlayMarkerId(markerId),
       });
 
       showMarkerActionMenu({
@@ -226,11 +273,21 @@ export function MapWithTrailSheet() {
         routePointIds={navigation.routePointIds}
         userLocation={mapLocation}
         userHeading={heading}
+        followUserLocation={followUser}
+        recenterKey={recenterKey}
         onLongPress={handleMapLongPress}
-        onMarkerPress={setSelectedMarkerId}
+        onMarkerPress={handleMarkerPress}
         onMarkerLongPress={handleMarkerLongPress}
+        onUserInteraction={handleUserInteraction}
       />
       <MapDrawerButton />
+      <MapMarkerSearch onSelectMarker={handleSearchSelectMarker} />
+      <MapLocationControls
+        followUser={followUser}
+        isRefreshing={isRefreshing}
+        onRecenter={handleRecenter}
+        onRefresh={handleRefreshLocation}
+      />
       <AddMarkerFab onPress={handleAddMarker} />
       {showNavigationSheet ? (
         <NavigationBottomSheet
@@ -241,7 +298,12 @@ export function MapWithTrailSheet() {
           distanceMeters={navigation.distanceMeters}
           isComputing={!navigation.isNavigating && navigation.toPointId != null}
           highlightedPointId={highlightedRoutePointId}
-          onHighlightPoint={setHighlightedRoutePointId}
+          userLatitude={userLatitude}
+          userLongitude={userLongitude}
+          onHighlightPoint={(pointId) => {
+            setFollowUser(false);
+            setHighlightedRoutePointId(pointId);
+          }}
           onAddVia={navigation.routeThroughHere}
           onRemoveVia={navigation.removeViaPoint}
           onSelectRoute={(pointIds, distance) =>
@@ -250,16 +312,33 @@ export function MapWithTrailSheet() {
           onClearRoute={navigation.clearNavigation}
         />
       ) : (
-        <MarkerDetailSheet
-          marker={displayMarker}
-          distanceMeters={distanceMeters}
-          isLoading={isLoading}
+        <TrailOnTrackSheet
+          match={match}
+          isLoading={trackLoading}
           locationError={errorMsg}
-          nearKarura={nearKarura}
-          initialSnapIndex={1}
-          onNavigateTo={displayMarker ? () => startNavigationTo(displayMarker.id) : undefined}
+          lastKnownLatitude={userLatitude}
+          lastKnownLongitude={userLongitude}
         />
       )}
+      {overlayMarker ? (
+        <MarkerDetailSheet
+          marker={overlayMarker}
+          distanceMeters={overlayDistanceMeters}
+          isLoading={false}
+          locationError={errorMsg}
+          nearKarura={nearKarura}
+          lastKnownLatitude={userLatitude}
+          lastKnownLongitude={userLongitude}
+          routeIncludesMarker={navigation.isOnActiveRoute(overlayMarker.id)}
+          routeSummary={navigation.routeSummary}
+          initialSnapIndex={1}
+          dismissible
+          overlay
+          onDismiss={() => setOverlayMarkerId(null)}
+          onNavigateTo={() => startNavigationTo(overlayMarker.id)}
+          onClearRoute={navigation.clearNavigation}
+        />
+      ) : null}
       <MarkerCaptureSheet
         key={
           captureDraft

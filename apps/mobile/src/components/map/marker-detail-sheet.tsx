@@ -1,7 +1,9 @@
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { useEffect, useMemo, useRef } from "react";
+import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import type { ComponentProps } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
-import { Button, Chip, Text, useTheme } from "react-native-paper";
+import { Button, Chip, IconButton, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
@@ -14,6 +16,8 @@ interface MarkerDetailSheetProps {
   isLoading: boolean;
   locationError: string | null;
   nearKarura: boolean;
+  lastKnownLatitude?: number | null;
+  lastKnownLongitude?: number | null;
   routeIncludesMarker?: boolean;
   routeSummary?: {
     distanceLabel: string;
@@ -23,6 +27,7 @@ interface MarkerDetailSheetProps {
   } | null;
   initialSnapIndex?: number;
   dismissible?: boolean;
+  overlay?: boolean;
   onDismiss?: () => void;
   onNavigateTo?: () => void;
   onClearRoute?: () => void;
@@ -48,10 +53,13 @@ export function MarkerDetailSheet({
   isLoading,
   locationError,
   nearKarura,
+  lastKnownLatitude = null,
+  lastKnownLongitude = null,
   routeIncludesMarker = false,
   routeSummary = null,
   initialSnapIndex = 1,
   dismissible = false,
+  overlay = false,
   onDismiss,
   onNavigateTo,
   onClearRoute,
@@ -67,6 +75,19 @@ export function MarkerDetailSheet({
     }
   }, [marker?.id, initialSnapIndex]);
 
+  const renderBackdrop = useCallback(
+    (props: ComponentProps<typeof BottomSheetBackdrop>) => (
+      <BottomSheetBackdrop
+        {...props}
+        disappearsOnIndex={-1}
+        appearsOnIndex={0}
+        opacity={0.35}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
+
   const label = marker ? markerLabel(marker) : null;
   const coordinates = marker ? pointCoordinates(marker) : null;
   const featureLabels = marker?.featureLabels
@@ -75,6 +96,8 @@ export function MarkerDetailSheet({
         .map((entry) => entry.trim())
         .filter(Boolean)
     : [];
+
+  const locationUnavailable = Boolean(locationError) && !nearKarura;
 
   if (isLoading && !marker) {
     return (
@@ -100,12 +123,16 @@ export function MarkerDetailSheet({
   }
 
   return (
-    <View testID="marker-detail-sheet" style={styles.sheetHost}>
+    <View
+      testID="marker-detail-sheet"
+      style={[styles.sheetHost, overlay ? styles.overlayHost : null]}
+    >
       <BottomSheet
         ref={sheetRef}
         index={marker ? initialSnapIndex : 0}
         snapPoints={snapPoints}
         enablePanDownToClose={dismissible}
+        backdropComponent={dismissible ? renderBackdrop : undefined}
         onChange={(index) => {
           if (dismissible && index < 0) {
             onDismiss?.();
@@ -123,11 +150,19 @@ export function MarkerDetailSheet({
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.five }]}
           testID="marker-detail-sheet-content"
         >
-          {locationError ? (
-            <Text variant="bodyMedium" style={{ color: colors.error }}>
-              {locationError}
-            </Text>
-          ) : !marker ? (
+          {dismissible ? (
+            <View style={styles.topBar}>
+              <View style={styles.topBarSpacer} />
+              <IconButton
+                icon="close"
+                size={20}
+                onPress={onDismiss}
+                testID="marker-detail-sheet-close"
+              />
+            </View>
+          ) : null}
+
+          {!marker ? (
             <Text variant="titleMedium" style={{ color: colors.onSurface }}>
               Tap a marker on the map
             </Text>
@@ -141,7 +176,20 @@ export function MarkerDetailSheet({
                 <Text variant="headlineMedium" style={[styles.title, { color: colors.onSurface }]}>
                   {label}
                 </Text>
-                {distanceMeters != null && nearKarura ? (
+                {locationUnavailable ? (
+                  <View style={styles.locationUnavailableRow}>
+                    <MaterialCommunityIcons
+                      name="crosshairs-off"
+                      size={18}
+                      color={colors.onSurfaceVariant}
+                    />
+                    <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                      {lastKnownLatitude != null && lastKnownLongitude != null
+                        ? `${lastKnownLatitude.toFixed(5)}, ${lastKnownLongitude.toFixed(5)}`
+                        : "Location unavailable"}
+                    </Text>
+                  </View>
+                ) : distanceMeters != null && nearKarura ? (
                   <View
                     style={[styles.distanceBadge, { backgroundColor: colors.primaryContainer }]}
                   >
@@ -250,10 +298,22 @@ const styles = StyleSheet.create({
     zIndex: 30,
     pointerEvents: "box-none",
   },
+  overlayHost: {
+    zIndex: 40,
+  },
   content: {
     paddingHorizontal: Spacing.five,
     paddingTop: Spacing.two,
     gap: Spacing.four,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: -Spacing.two,
+    marginBottom: -Spacing.two,
+  },
+  topBarSpacer: {
+    flex: 1,
   },
   hero: {
     gap: Spacing.two,
@@ -266,6 +326,11 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: "800",
     letterSpacing: -0.5,
+  },
+  locationUnavailableRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
   },
   distanceBadge: {
     alignSelf: "flex-start",

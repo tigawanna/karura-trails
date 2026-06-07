@@ -12,6 +12,10 @@ import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 import { formatRouteDistance } from "@/lib/navigation/route-params";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { Spacing } from "@/theme";
+import {
+  getUpcomingRouteMarkers,
+  RouteElevationChart,
+} from "@/components/map/route-elevation-chart";
 
 const ROUTE_PREVIEW_NODE_LIMIT = 7;
 
@@ -23,6 +27,8 @@ interface NavigationBottomSheetProps {
   distanceMeters: number;
   isComputing: boolean;
   highlightedPointId: number | null;
+  userLatitude?: number | null;
+  userLongitude?: number | null;
   onHighlightPoint: (pointId: number) => void;
   onAddVia: (pointId: number) => void;
   onRemoveVia: (pointId: number) => void;
@@ -38,6 +44,8 @@ export function NavigationBottomSheet({
   distanceMeters,
   isComputing,
   highlightedPointId,
+  userLatitude = null,
+  userLongitude = null,
   onHighlightPoint,
   onAddVia,
   onRemoveVia,
@@ -89,6 +97,11 @@ export function NavigationBottomSheet({
   }, [pointsById, routePointIds]);
 
   const activeRouteKey = routePointIds.join(",");
+
+  const upcomingMarkers = useMemo(
+    () => getUpcomingRouteMarkers(routePointIds, pointsById, userLatitude, userLongitude, 10),
+    [pointsById, routePointIds, userLatitude, userLongitude],
+  );
 
   return (
     <View testID="navigation-bottom-sheet" style={styles.sheetHost}>
@@ -220,6 +233,8 @@ export function NavigationBottomSheet({
               ) : null}
             </View>
           ) : null}
+
+          {upcomingMarkers.length >= 2 ? <RouteElevationChart markers={upcomingMarkers} /> : null}
 
           {routeAlternatives.length > 0 ? (
             <View style={styles.section}>
