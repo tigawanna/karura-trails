@@ -5,7 +5,6 @@ import { queryOptions } from "@tanstack/react-query";
 import { asc, eq, getTableColumns, inArray, isNotNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
-import type { PointWithGeometry } from "@/data-access-layer/points";
 import { enrichRoutingPoint, type EnrichedRoutingPoint } from "@/geo/point-record";
 
 export type NeighborLinkWithGeometry = {
@@ -33,7 +32,7 @@ export const routingPointsQueryOptions = queryOptions({
       .select(routingPointSelect)
       .from(points)
       .where(isNotNull(points.sourceId))
-      .orderBy(asc(points.sortOrder), asc(points.id)) as Promise<PointWithGeometry[]>,
+      .orderBy(asc(points.sortOrder), asc(points.id)),
 });
 
 export const groundedPointsQueryOptions = queryOptions({
@@ -45,7 +44,7 @@ export const groundedPointsQueryOptions = queryOptions({
       .where(
         sql`${points.sourceId} IS NOT NULL AND ${points.markerKind} IN ('physical', 'landmark')`,
       )
-      .orderBy(asc(points.sortOrder), asc(points.id)) as Promise<PointWithGeometry[]>,
+      .orderBy(asc(points.sortOrder), asc(points.id)),
 });
 
 async function loadLandmarkTypeCatalog() {
@@ -69,7 +68,7 @@ export const enrichedRoutingPointsQueryOptions = queryOptions({
         .select(routingPointSelect)
         .from(points)
         .where(isNotNull(points.sourceId))
-        .orderBy(asc(points.sortOrder), asc(points.id)) as Promise<PointWithGeometry[]>,
+        .orderBy(asc(points.sortOrder), asc(points.id)),
       loadLandmarkTypeCatalog(),
     ]);
 
