@@ -1,6 +1,5 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
-import { DrawerActions } from "@react-navigation/native";
-import { useNavigation } from "expo-router";
+import { DrawerActions, useNavigation } from "expo-router/react-navigation";
 import { StyleSheet, View } from "react-native";
 import { IconButton, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";

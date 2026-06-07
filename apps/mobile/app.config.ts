@@ -1,6 +1,6 @@
-import { ConfigContext, ExpoConfig } from "expo/config";
+import type { ConfigContext, ExpoConfig } from "expo/config";
 
-import brand from "./brand.json";
+import brand from "./brand.json" with { type: "json" };
 
 const BrandColors = brand;
 
@@ -40,11 +40,14 @@ const getPlugins = (bundleId: UniqueIdentifier) => {
 
   const plugins: NonNullable<ExpoConfig["plugins"]> = [
     "expo-router",
+    "expo-asset",
+    "expo-image",
     "expo-font",
     "expo-status-bar",
     "expo-web-browser",
     "@maplibre/maplibre-react-native",
     "./plugins/opsqlite-spatialite/with-spatialite",
+    "./plugins/with-android-gradle",
     [
       "expo-location",
       {
@@ -141,7 +144,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       router: {},
       eas: {
-        projectId: process.env.EAS_PROJECT_ID,
+        projectId: "b57a6ef2-0ad6-4a59-a8bb-2ba46308d5fb",
       },
     },
   };

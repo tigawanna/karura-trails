@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { withDangerousMod } = require("@expo/config-plugins");
+const { withDangerousMod } = require("expo/config-plugins");
 
 const ARCHITECTURES = ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"];
 
