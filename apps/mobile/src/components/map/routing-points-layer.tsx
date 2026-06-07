@@ -2,11 +2,11 @@ import React, { useMemo } from "react";
 import { GeoJSONSource, Layer } from "@maplibre/maplibre-react-native";
 import { useTheme } from "react-native-paper";
 
-import type { PointWithGeometry } from "@/data-access-layer/points";
+import type { EnrichedRoutingPoint } from "@/geo/point-record";
 import { geomParse, isValidPoint } from "@/geo/geom-parse";
 
 interface RoutingPointsLayerProps {
-  points: PointWithGeometry[];
+  points: EnrichedRoutingPoint[];
 }
 
 export function RoutingPointsLayer({ points }: RoutingPointsLayerProps) {
@@ -32,6 +32,9 @@ export function RoutingPointsLayer({ points }: RoutingPointsLayerProps) {
             name: point.name ?? point.ref ?? "Marker",
             category: point.category ?? "custom",
             nodeRole: point.nodeRole ?? "",
+            markerKind: point.markerKind ?? "",
+            featureSlugs: point.featureSlugs.join(","),
+            featureLabels: point.featureLabels,
           },
         };
       })

@@ -5,6 +5,8 @@ import { loadRoutingGraphSeed } from "@/geo/load-routing-seed";
 import { migrate } from "drizzle-orm/op-sqlite/migrator";
 import { useEffect, useState } from "react";
 import { db, ensureSpatialMetadata, resetLocalDatabase } from "./client";
+import { backfillMarkerKinds } from "./backfill-marker-kinds";
+import { seedLandmarkTypesFromJson } from "./seed-landmark-types";
 import { seedRoutingGraphFromJson } from "./seed-routing-graph";
 
 interface InitDatabaseProps {
@@ -44,7 +46,9 @@ export function InitDatabase({ children }: InitDatabaseProps) {
       try {
         await ensureSpatialMetadata();
         const seed = loadRoutingGraphSeed();
+        await seedLandmarkTypesFromJson(db, seed);
         await seedRoutingGraphFromJson(db, seed);
+        await backfillMarkerKinds(db);
         if (cancelled) {
           return;
         }

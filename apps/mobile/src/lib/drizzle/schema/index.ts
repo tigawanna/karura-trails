@@ -18,3 +18,6 @@ export type {
   HikeWaypointInsert,
   HikeStatus,
 } from "./hikes";
+
+export { landmarkTypes } from "./landmark-types";
+export type { LandmarkTypeSelect, LandmarkTypeInsert } from "./landmark-types";

@@ -1,11 +1,12 @@
 import { db } from "@/lib/drizzle/client";
-import { pointNeighbors, points } from "@/lib/drizzle/schema";
+import { landmarkTypes, pointNeighbors, points } from "@/lib/drizzle/schema";
 import { queryKeyPrefixes } from "@/lib/tanstack/query/client";
 import { queryOptions } from "@tanstack/react-query";
-import { asc, eq, getTableColumns, isNotNull, sql } from "drizzle-orm";
+import { asc, eq, getTableColumns, inArray, isNotNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/sqlite-core";
 
 import type { PointWithGeometry } from "@/data-access-layer/points";
+import { enrichRoutingPoint, type EnrichedRoutingPoint } from "@/geo/point-record";
 
 export type NeighborLinkWithGeometry = {
   id: number;
@@ -34,6 +35,57 @@ export const routingPointsQueryOptions = queryOptions({
       .where(isNotNull(points.sourceId))
       .orderBy(asc(points.sortOrder), asc(points.id)) as Promise<PointWithGeometry[]>,
 });
+
+export const groundedPointsQueryOptions = queryOptions({
+  queryKey: [queryKeyPrefixes.routingPoints, "grounded"],
+  queryFn: () =>
+    db
+      .select(routingPointSelect)
+      .from(points)
+      .where(
+        sql`${points.sourceId} IS NOT NULL AND ${points.markerKind} IN ('physical', 'landmark')`,
+      )
+      .orderBy(asc(points.sortOrder), asc(points.id)) as Promise<PointWithGeometry[]>,
+});
+
+async function loadLandmarkTypeCatalog() {
+  return db
+    .select({
+      id: landmarkTypes.id,
+      sourceId: landmarkTypes.sourceId,
+      slug: landmarkTypes.slug,
+      label: landmarkTypes.label,
+      sortOrder: landmarkTypes.sortOrder,
+    })
+    .from(landmarkTypes)
+    .orderBy(asc(landmarkTypes.sortOrder), asc(landmarkTypes.label));
+}
+
+export const enrichedRoutingPointsQueryOptions = queryOptions({
+  queryKey: [queryKeyPrefixes.routingPoints, "enriched"],
+  queryFn: async (): Promise<EnrichedRoutingPoint[]> => {
+    const [rows, catalog] = await Promise.all([
+      db
+        .select(routingPointSelect)
+        .from(points)
+        .where(isNotNull(points.sourceId))
+        .orderBy(asc(points.sortOrder), asc(points.id)) as Promise<PointWithGeometry[]>,
+      loadLandmarkTypeCatalog(),
+    ]);
+
+    return rows.map((point) => enrichRoutingPoint(point, catalog));
+  },
+});
+
+export async function resolveRoutingPointIdsByRefs(refs: string[]): Promise<number[]> {
+  if (refs.length === 0) {
+    return [];
+  }
+
+  const rows = await db.select({ id: points.id }).from(points).where(inArray(points.ref, refs));
+
+  return rows.map((row) => row.id);
+}
 
 export const neighborLinksQueryOptions = queryOptions({
   queryKey: [queryKeyPrefixes.neighborLinks],

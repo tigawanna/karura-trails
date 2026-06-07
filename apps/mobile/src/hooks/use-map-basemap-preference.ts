@@ -10,7 +10,7 @@ function isMapBasemapPreset(value: string | null): value is MapBasemapPreset {
 }
 
 export function useMapBasemapPreference() {
-  const [preset, setPresetState] = useState<MapBasemapPreset>("minimal");
+  const [preset, setPresetState] = useState<MapBasemapPreset>("standard");
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {

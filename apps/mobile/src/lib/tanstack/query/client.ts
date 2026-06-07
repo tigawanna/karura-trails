@@ -4,6 +4,7 @@ export const queryKeyPrefixes = {
   routingPoints: "routing-points",
   neighborLinks: "neighbor-links",
   capturedPoints: "captured-points",
+  landmarkTypes: "landmark-types",
   deviceLocation: "device-location",
   devLocationSpoof: "dev-location-spoof",
 } as const;

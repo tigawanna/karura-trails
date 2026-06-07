@@ -1,4 +1,4 @@
-import { routingPointsQueryOptions } from "@/data-access-layer/routing-graph";
+import { enrichedRoutingPointsQueryOptions } from "@/data-access-layer/routing-graph";
 import { LoadingState } from "@/components/ui/loading-state";
 import { useQuery } from "@tanstack/react-query";
 import { ScrollView, StyleSheet, View } from "react-native";
@@ -8,7 +8,7 @@ import { MaxContentWidth, Spacing } from "@/theme";
 
 export default function TrailsScreen() {
   const { colors } = useTheme();
-  const { data: markers, isLoading } = useQuery(routingPointsQueryOptions);
+  const { data: markers, isLoading } = useQuery(enrichedRoutingPointsQueryOptions);
 
   if (isLoading) {
     return <LoadingState message="Loading markers…" testID="trails-loading" />;
@@ -56,7 +56,9 @@ export default function TrailsScreen() {
               </Text>
             ) : null}
             <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-              {[marker.category, marker.nodeRole].filter(Boolean).join(" · ")}
+              {[marker.markerKind, marker.category, marker.nodeRole, marker.featureLabels]
+                .filter(Boolean)
+                .join(" · ")}
               {marker.elevation != null ? ` · ${Math.round(marker.elevation)} m` : ""}
             </Text>
             {marker.description ? (

@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { integer, real, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
+import type { MarkerKind } from "@/geo/marker-kind";
 import { pointZ } from "@/lib/drizzle/spatial-types";
 import { paths } from "@/lib/drizzle/schema/paths";
 
@@ -12,6 +13,7 @@ export const points = sqliteTable(
     name: text("name"),
     description: text("description"),
     category: text("category"),
+    markerKind: text("marker_kind").$type<MarkerKind>(),
     nodeRole: text("node_role"),
     sourceId: integer("source_id"),
     sortOrder: integer("sort_order").notNull().default(0),
@@ -49,6 +51,7 @@ export type PointCategory =
   | "water"
   | "cave"
   | "sign"
+  | "bridge"
   | "custom";
 
 export type PointNodeRole = "junction" | "endpoint" | "waypoint";

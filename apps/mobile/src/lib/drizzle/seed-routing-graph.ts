@@ -1,3 +1,4 @@
+import { resolveMarkerKind } from "@/geo/marker-kind";
 import type { RoutingGraphSeedJson } from "@/geo/routing-graph-seed.types";
 import type { PointCategory } from "@/lib/drizzle/schema";
 import type { DrizzleDB } from "./client";
@@ -12,6 +13,7 @@ const VALID_CATEGORIES = new Set<PointCategory>([
   "water",
   "cave",
   "sign",
+  "bridge",
   "custom",
 ]);
 
@@ -80,6 +82,14 @@ export async function seedRoutingGraphFromJson(
           name: properties.name,
           description: properties.description,
           category: normalizeCategory(properties.category),
+          markerKind:
+            properties.markerKind ??
+            resolveMarkerKind({
+              ref: properties.ref,
+              name: properties.name,
+              parentRef: properties.parentRef,
+              metadata: properties.metadata,
+            }),
           nodeRole: properties.nodeRole,
           sourceId: properties.id,
           sortOrder: properties.sortOrder,

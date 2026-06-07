@@ -39,10 +39,24 @@ function DrawerNavigator() {
         }}
       />
       <Drawer.Screen
+        name="navigate"
+        options={{
+          drawerLabel: "Navigate",
+          title: "Navigate",
+        }}
+      />
+      <Drawer.Screen
         name="trails"
         options={{
-          drawerLabel: "All trails",
-          title: "Trails",
+          drawerLabel: "All markers",
+          title: "Markers",
+        }}
+      />
+      <Drawer.Screen
+        name="route"
+        options={{
+          drawerItemStyle: { display: "none", height: 0 },
+          title: "Route",
         }}
       />
       <Drawer.Screen

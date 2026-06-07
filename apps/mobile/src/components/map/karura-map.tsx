@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
@@ -7,46 +7,76 @@ import { Camera, Map } from "@maplibre/maplibre-react-native";
 
 import { CapturedPointsLayer } from "./captured-points-layer";
 import { MapBasemapToggle } from "./map-basemap-toggle";
-import { NeighborLinksLayer } from "./neighbor-links-layer";
+import { RoutePreviewLayer } from "./route-preview-layer";
 import { RoutingPointsLayer } from "./routing-points-layer";
 import { UserLocationLayer } from "./user-location-layer";
 import type { PointWithGeometry } from "@/data-access-layer/points";
+import { findNearestMarker } from "@/geo/nearest-marker";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useMapBasemapPreference } from "@/hooks/use-map-basemap-preference";
-import { useNeighborLinks, useRoutingPoints } from "@/hooks/use-routing-graph";
+import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 import { calculateBBox, combineBBoxes, bboxCenter, bboxToZoom, geomParse } from "@/geo/geom-parse";
 import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM } from "@/geo/karura-bounds";
 import { normalizeMapColorScheme, resolveMapStyle } from "@/lib/map-libre/map-style";
 
+const MARKER_HIT_RADIUS_METERS = 35;
+const FOCUS_MARKER_ZOOM = 17.5;
+
 interface KaruraMapProps {
   capturedPoints?: PointWithGeometry[];
   draftCoordinate?: { lng: number; lat: number } | null;
+  focusPointId?: number | null;
+  routePointIds?: number[];
+  userLocation?: { latitude: number; longitude: number } | null;
+  userHeading?: number | null;
+  enableMarkerCapture?: boolean;
   onLongPress?: (lng: number, lat: number) => void;
+  onMarkerPress?: (pointId: number) => void;
+  onMarkerLongPress?: (pointId: number) => void;
 }
 
 export function KaruraMap({
   capturedPoints = [],
   draftCoordinate = null,
+  focusPointId = null,
+  routePointIds = [],
+  userLocation = null,
+  userHeading = null,
+  enableMarkerCapture = true,
   onLongPress,
+  onMarkerPress,
+  onMarkerLongPress,
 }: KaruraMapProps) {
   const { colors } = useTheme();
   const colorScheme = normalizeMapColorScheme(useColorScheme());
   const { preset, setPreset, isReady: basemapReady } = useMapBasemapPreference();
   const mapStyle = resolveMapStyle(preset, colorScheme);
-  const { location } = useDeviceLocation();
+  const { location: fallbackLocation } = useDeviceLocation();
   const [mapReady, setMapReady] = useState(false);
-
-  const { data: routingPoints, isLoading: pointsLoading } = useRoutingPoints();
-  const { data: neighborLinks, isLoading: linksLoading } = useNeighborLinks();
+  const { enrichedPoints, pointsById, isLoading: graphLoading } = useRoutingGraphData();
+  const location = userLocation ?? fallbackLocation?.coords ?? null;
 
   useEffect(() => {
     setMapReady(false);
   }, [mapStyle]);
 
-  const camera = useMemo(() => {
-    const bboxes = (routingPoints ?? []).map((point) => calculateBBox(geomParse(point.geom)));
-    const combined = combineBBoxes(bboxes);
+  const focusPoint = focusPointId != null ? pointsById.get(focusPointId) : null;
 
+  const camera = useMemo(() => {
+    if (focusPoint) {
+      const geometry = geomParse(focusPoint.geom);
+      const coordinates = geometry?.coordinates;
+      if (coordinates && typeof coordinates[0] === "number" && typeof coordinates[1] === "number") {
+        return {
+          center: [coordinates[0], coordinates[1]] as [number, number],
+          zoom: FOCUS_MARKER_ZOOM,
+          duration: mapReady ? 700 : 0,
+        };
+      }
+    }
+
+    const bboxes = enrichedPoints.map((point) => calculateBBox(geomParse(point.geom)));
+    const combined = combineBBoxes(bboxes);
     if (!combined) {
       return {
         center: KARURA_FOREST_CENTER,
@@ -60,18 +90,48 @@ export function KaruraMap({
       zoom: bboxToZoom(combined),
       duration: mapReady ? 1000 : 0,
     };
-  }, [routingPoints, mapReady]);
+  }, [enrichedPoints, focusPoint, mapReady]);
 
-  const handleLongPress = (event: NativeSyntheticEvent<PressEvent>) => {
-    const [longitude, latitude] = event.nativeEvent.lngLat;
-    onLongPress?.(longitude, latitude);
-  };
+  const resolveMarkerAtCoordinate = useCallback(
+    (latitude: number, longitude: number) => {
+      return findNearestMarker(enrichedPoints, latitude, longitude, MARKER_HIT_RADIUS_METERS);
+    },
+    [enrichedPoints],
+  );
 
-  const graphLoading = pointsLoading || linksLoading;
+  const handlePress = useCallback(
+    (event: NativeSyntheticEvent<PressEvent>) => {
+      const [longitude, latitude] = event.nativeEvent.lngLat;
+      const hit = resolveMarkerAtCoordinate(latitude, longitude);
+      if (hit) {
+        onMarkerPress?.(hit.marker.id);
+      }
+    },
+    [onMarkerPress, resolveMarkerAtCoordinate],
+  );
+
+  const handleLongPress = useCallback(
+    (event: NativeSyntheticEvent<PressEvent>) => {
+      const [longitude, latitude] = event.nativeEvent.lngLat;
+      const hit = resolveMarkerAtCoordinate(latitude, longitude);
+      if (hit) {
+        if (onMarkerLongPress) {
+          onMarkerLongPress(hit.marker.id);
+        }
+        return;
+      }
+      if (enableMarkerCapture) {
+        onLongPress?.(longitude, latitude);
+      }
+    },
+    [enableMarkerCapture, onLongPress, onMarkerLongPress, resolveMarkerAtCoordinate],
+  );
+
+  const graphLoadingState = graphLoading;
 
   return (
     <View style={styles.container}>
-      {(graphLoading || !basemapReady) && (
+      {(graphLoadingState || !basemapReady) && (
         <View
           style={[
             StyleSheet.absoluteFill,
@@ -90,24 +150,24 @@ export function KaruraMap({
           style={styles.map}
           mapStyle={mapStyle}
           onDidFinishLoadingMap={() => setMapReady(true)}
-          onLongPress={onLongPress ? handleLongPress : undefined}
+          onPress={handlePress}
+          onLongPress={handleLongPress}
         >
           <Camera center={camera.center} zoom={camera.zoom} duration={camera.duration} />
 
-          {neighborLinks && neighborLinks.length > 0 ? (
-            <NeighborLinksLayer links={neighborLinks} />
+          {routePointIds.length > 1 ? (
+            <RoutePreviewLayer routePointIds={routePointIds} pointsById={pointsById} />
           ) : null}
 
-          {routingPoints && routingPoints.length > 0 ? (
-            <RoutingPointsLayer points={routingPoints} />
-          ) : null}
+          {enrichedPoints.length > 0 ? <RoutingPointsLayer points={enrichedPoints} /> : null}
 
-          {location && (
+          {location ? (
             <UserLocationLayer
-              longitude={location.coords.longitude}
-              latitude={location.coords.latitude}
+              longitude={location.longitude}
+              latitude={location.latitude}
+              heading={userHeading}
             />
-          )}
+          ) : null}
 
           {(capturedPoints.length > 0 || draftCoordinate) && (
             <CapturedPointsLayer points={capturedPoints} draftCoordinate={draftCoordinate} />
