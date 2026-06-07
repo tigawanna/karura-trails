@@ -18,7 +18,7 @@ import { MarkerCaptureSheet } from "@/components/markers/marker-capture-sheet";
 import { TrailOnTrackSheet } from "@/components/trails/trail-on-track-sheet";
 import { markerLabel, pointCoordinates, isNearKarura } from "@/geo/nearest-marker";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
-import { useDeviceHeading } from "@/hooks/use-device-heading";
+import { useUserLocationHeading } from "@/hooks/use-user-location-heading";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useLiveLocation } from "@/hooks/use-live-location";
 import type { MarkerCaptureDraft } from "@/hooks/use-marker-capture";
@@ -67,7 +67,10 @@ export function MapWithTrailSheet() {
     userLongitude,
   });
 
-  const heading = useDeviceHeading(Boolean(userLatitude && userLongitude));
+  const heading = useUserLocationHeading(
+    activeLocation ?? staticLocation,
+    Boolean(userLatitude && userLongitude),
+  );
 
   const showNavigationSheet = navigation.toPointId != null;
 
@@ -308,6 +311,7 @@ export function MapWithTrailSheet() {
         userLocation={mapLocation}
         userHeading={heading}
         followUserLocation={followUser}
+        rotateMapToHeading={showNavigationSheet}
         recenterKey={recenterKey}
         onLongPress={handleMapLongPress}
         onMarkerPress={handleMarkerPress}

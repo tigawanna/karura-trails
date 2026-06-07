@@ -1,6 +1,8 @@
 import { StyleSheet, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 
+import { headingToScreenRotation } from "@/geo/heading";
+
 export const USER_LOCATION_ARROW_COLOR = "#fb0404";
 export const USER_LOCATION_ARROW_VIEWBOX = "0 0 287.863 287.863";
 
@@ -10,40 +12,55 @@ export const USER_LOCATION_ARROW_PATH =
 interface UserLocationArrowIconProps {
   size?: number;
   heading?: number | null;
+  mapBearing?: number;
 }
 
-export function UserLocationArrowIcon({ size = 44, heading = null }: UserLocationArrowIconProps) {
-  const hasHeading = heading != null && Number.isFinite(heading);
-  const rotation = hasHeading ? heading : 0;
+export function UserLocationArrowIcon({
+  size = 44,
+  heading = null,
+  mapBearing = 0,
+}: UserLocationArrowIconProps) {
+  const rotation = headingToScreenRotation(heading, mapBearing) ?? 0;
 
   return (
-    <View
-      style={[
-        styles.container,
-        { width: size, height: size, transform: [{ rotate: `${rotation}deg` }] },
-      ]}
-      testID="user-location-arrow-icon"
-    >
+    <View style={[styles.wrapper, { width: size, height: size }]} testID="user-location-arrow-icon">
       <View
+        collapsable={false}
         style={[
-          styles.pulse,
+          styles.rotator,
           {
-            width: size * 1.35,
-            height: size * 1.35,
-            borderRadius: size * 0.675,
-            backgroundColor: USER_LOCATION_ARROW_COLOR,
+            width: size,
+            height: size,
+            transform: [{ rotate: `${rotation}deg` }],
+            transformOrigin: "50% 100%",
           },
         ]}
-      />
-      <Svg width={size} height={size} viewBox={USER_LOCATION_ARROW_VIEWBOX}>
-        <Path d={USER_LOCATION_ARROW_PATH} fill={USER_LOCATION_ARROW_COLOR} />
-      </Svg>
+      >
+        <View
+          style={[
+            styles.pulse,
+            {
+              width: size * 1.35,
+              height: size * 1.35,
+              borderRadius: size * 0.675,
+              backgroundColor: USER_LOCATION_ARROW_COLOR,
+            },
+          ]}
+        />
+        <Svg width={size} height={size} viewBox={USER_LOCATION_ARROW_VIEWBOX}>
+          <Path d={USER_LOCATION_ARROW_PATH} fill={USER_LOCATION_ARROW_COLOR} />
+        </Svg>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+  rotator: {
     alignItems: "center",
     justifyContent: "center",
   },

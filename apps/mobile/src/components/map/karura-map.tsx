@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
-import type { PressEvent } from "@maplibre/maplibre-react-native";
+import type { PressEvent, ViewStateChangeEvent } from "@maplibre/maplibre-react-native";
 import { Camera, Map } from "@maplibre/maplibre-react-native";
 
 import { CapturedPointsLayer } from "./captured-points-layer";
@@ -33,6 +33,7 @@ interface KaruraMapProps {
   userLocation?: { latitude: number; longitude: number } | null;
   userHeading?: number | null;
   followUserLocation?: boolean;
+  rotateMapToHeading?: boolean;
   recenterKey?: number;
   enableMarkerCapture?: boolean;
   onLongPress?: (lng: number, lat: number) => void;
@@ -50,6 +51,7 @@ export function KaruraMap({
   userLocation = null,
   userHeading = null,
   followUserLocation = false,
+  rotateMapToHeading = false,
   recenterKey = 0,
   enableMarkerCapture = true,
   onLongPress,
@@ -63,6 +65,7 @@ export function KaruraMap({
   const mapStyle = resolveMapStyle(preset, colorScheme);
   const { location: fallbackLocation } = useDeviceLocation();
   const [mapReady, setMapReady] = useState(false);
+  const [mapBearing, setMapBearing] = useState(0);
   const { enrichedPoints, pointsById, isLoading: graphLoading } = useRoutingGraphData();
   const location = userLocation ?? fallbackLocation?.coords ?? null;
 
@@ -77,11 +80,15 @@ export function KaruraMap({
 
   const focusPoint = focusPointId != null ? pointsById.get(focusPointId) : null;
 
+  const shouldRotateMapToHeading =
+    rotateMapToHeading && followUserLocation && userHeading != null && Number.isFinite(userHeading);
+
   const camera = useMemo(() => {
     if (followUserLocation && location) {
       return {
         center: [location.longitude, location.latitude] as [number, number],
         zoom: FOLLOW_USER_ZOOM,
+        bearing: shouldRotateMapToHeading ? userHeading : undefined,
         duration: mapReady ? (recenterKey > 0 ? 700 : 250) : 0,
       };
     }
@@ -113,7 +120,26 @@ export function KaruraMap({
       zoom: bboxToZoom(combined),
       duration: mapReady ? 1000 : 0,
     };
-  }, [enrichedPoints, focusPoint, followUserLocation, location, mapReady, recenterKey]);
+  }, [
+    enrichedPoints,
+    focusPoint,
+    followUserLocation,
+    location,
+    mapReady,
+    recenterKey,
+    shouldRotateMapToHeading,
+    userHeading,
+  ]);
+
+  const effectiveMapBearing =
+    shouldRotateMapToHeading && userHeading != null ? userHeading : mapBearing;
+
+  const handleRegionIsChanging = useCallback(
+    (event: NativeSyntheticEvent<ViewStateChangeEvent>) => {
+      setMapBearing(event.nativeEvent.bearing);
+    },
+    [],
+  );
 
   const resolveMarkerAtCoordinate = useCallback(
     (latitude: number, longitude: number) => {
@@ -184,6 +210,8 @@ export function KaruraMap({
           onPress={handlePress}
           onLongPress={handleLongPress}
           onRegionWillChange={onUserInteraction}
+          onRegionIsChanging={handleRegionIsChanging}
+          onRegionDidChange={handleRegionIsChanging}
         >
           <Camera
             key={
@@ -193,6 +221,7 @@ export function KaruraMap({
             }
             center={camera.center}
             zoom={camera.zoom}
+            bearing={camera.bearing}
             duration={camera.duration}
           />
 
@@ -209,6 +238,7 @@ export function KaruraMap({
               longitude={location.longitude}
               latitude={location.latitude}
               heading={userHeading}
+              mapBearing={effectiveMapBearing}
             />
           ) : null}
 
