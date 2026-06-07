@@ -1,0 +1,1 @@
+ALTER TABLE `points` ADD `secondary_photo_uri` text;

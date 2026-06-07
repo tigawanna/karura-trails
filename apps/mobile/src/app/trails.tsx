@@ -1,28 +1,27 @@
-import { trailsQueryOptions } from "@/data-access-layer/trails";
+import { routingPointsQueryOptions } from "@/data-access-layer/routing-graph";
 import { LoadingState } from "@/components/ui/loading-state";
-import { TrailCard } from "@/components/trails/trail-card";
 import { useQuery } from "@tanstack/react-query";
 import { ScrollView, StyleSheet, View } from "react-native";
-import { Text, useTheme } from "react-native-paper";
+import { Card, Text, useTheme } from "react-native-paper";
 
 import { MaxContentWidth, Spacing } from "@/theme";
 
 export default function TrailsScreen() {
   const { colors } = useTheme();
-  const { data: trails, isLoading: trailsLoading } = useQuery(trailsQueryOptions);
+  const { data: markers, isLoading } = useQuery(routingPointsQueryOptions);
 
-  if (trailsLoading) {
-    return <LoadingState message="Loading trails…" testID="trails-loading" />;
+  if (isLoading) {
+    return <LoadingState message="Loading markers…" testID="trails-loading" />;
   }
 
-  if (!trails || trails.length === 0) {
+  if (!markers || markers.length === 0) {
     return (
       <View style={[styles.emptyRoot, { backgroundColor: colors.background }]}>
         <Text variant="titleMedium" style={{ color: colors.onSurface }}>
-          No trails found
+          No markers found
         </Text>
         <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant, textAlign: "center" }}>
-          Trail data will appear here once the database has been seeded.
+          Marker data will appear here once the routing graph has been seeded.
         </Text>
       </View>
     );
@@ -38,15 +37,35 @@ export default function TrailsScreen() {
     >
       <View style={styles.header}>
         <Text variant="headlineSmall" style={{ color: colors.onSurface, fontWeight: "700" }}>
-          Karura Trails
+          Karura Markers
         </Text>
         <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
-          {trails.length} {trails.length === 1 ? "trail" : "trails"} in the forest
+          {markers.length} routing markers in the graph
         </Text>
       </View>
 
-      {trails.map((trail) => (
-        <TrailCard key={trail.id} trail={trail} testID={`trail-card-${trail.slug}`} />
+      {markers.map((marker) => (
+        <Card key={marker.id} style={styles.card} testID={`marker-card-${marker.id}`}>
+          <Card.Content style={styles.cardContent}>
+            <Text variant="titleMedium" style={{ color: colors.onSurface }}>
+              {marker.ref ?? marker.name ?? `#${marker.id}`}
+            </Text>
+            {marker.name && marker.ref && marker.name !== marker.ref ? (
+              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                {marker.name}
+              </Text>
+            ) : null}
+            <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+              {[marker.category, marker.nodeRole].filter(Boolean).join(" · ")}
+              {marker.elevation != null ? ` · ${Math.round(marker.elevation)} m` : ""}
+            </Text>
+            {marker.description ? (
+              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant, marginTop: 4 }}>
+                {marker.description}
+              </Text>
+            ) : null}
+          </Card.Content>
+        </Card>
       ))}
     </ScrollView>
   );
@@ -68,6 +87,12 @@ const styles = StyleSheet.create({
   header: {
     gap: Spacing.one,
     marginBottom: Spacing.one,
+  },
+  card: {
+    backgroundColor: "transparent",
+  },
+  cardContent: {
+    gap: 2,
   },
   emptyRoot: {
     flex: 1,

@@ -8,6 +8,20 @@
       "when": 1780337973074,
       "tag": "0000_big_liz_osborn",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1780411227429,
+      "tag": "0001_hesitant_dragon_lord",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1780760129121,
+      "tag": "0002_colorful_hellion",
+      "breakpoints": true
     }
   ]
 }

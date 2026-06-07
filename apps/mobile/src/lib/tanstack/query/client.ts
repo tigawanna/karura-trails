@@ -1,7 +1,9 @@
 import { MutationCache, QueryClient } from "@tanstack/react-query";
 
 export const queryKeyPrefixes = {
-  trails: "trails",
+  routingPoints: "routing-points",
+  neighborLinks: "neighbor-links",
+  capturedPoints: "captured-points",
   deviceLocation: "device-location",
   devLocationSpoof: "dev-location-spoof",
 } as const;

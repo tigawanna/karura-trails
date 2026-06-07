@@ -1,41 +1,73 @@
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import migrations from "@/drizzle/migrations";
-import { useMigrations } from "drizzle-orm/op-sqlite/migrator";
+import { loadRoutingGraphSeed } from "@/geo/load-routing-seed";
+import { migrate } from "drizzle-orm/op-sqlite/migrator";
 import { useEffect, useState } from "react";
-import { db, ensureSpatialMetadata } from "./client";
-import { seedTrailsFromGeoJSON } from "./seed";
-import { loadTrailsGeoJSON } from "@/geo/load-trails-geojson";
+import { db, ensureSpatialMetadata, resetLocalDatabase } from "./client";
+import { seedRoutingGraphFromJson } from "./seed-routing-graph";
 
 interface InitDatabaseProps {
   children?: React.ReactNode;
 }
 
 export function InitDatabase({ children }: InitDatabaseProps) {
-  const { success, error } = useMigrations(db, migrations);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (!success) {
-      return;
+    let cancelled = false;
+
+    async function bootstrap() {
+      try {
+        if (process.env.EXPO_PUBLIC_RESET_DATABASE === "1") {
+          resetLocalDatabase();
+        }
+
+        await migrate(db, migrations);
+        if (cancelled) {
+          return;
+        }
+        setSuccess(true);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        const nextError = err instanceof Error ? err : new Error(String(err));
+        console.error("[InitDatabase] migration failed:", nextError);
+        setError(nextError);
+        return;
+      }
+
+      try {
+        await ensureSpatialMetadata();
+        const seed = loadRoutingGraphSeed();
+        await seedRoutingGraphFromJson(db, seed);
+        if (cancelled) {
+          return;
+        }
+        setReady(true);
+      } catch (err) {
+        if (cancelled) {
+          return;
+        }
+        const nextError = err instanceof Error ? err : new Error(String(err));
+        console.error("[InitDatabase] initialization failed:", nextError);
+        setInitError(nextError);
+      }
     }
 
-    async function initialize() {
-      await ensureSpatialMetadata();
-      const geojson = loadTrailsGeoJSON();
-      await seedTrailsFromGeoJSON(db, geojson);
-    }
+    void bootstrap();
 
-    initialize()
-      .then(() => setReady(true))
-      .catch((err) => {
-        console.error("[InitDatabase] initialization failed:", err);
-        setInitError(err instanceof Error ? err : new Error(String(err)));
-      });
-  }, [success]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   if (error) {
+    console.error("[InitDatabase] migration failed:", error);
     return (
       <ErrorState
         title="Migration Failed"

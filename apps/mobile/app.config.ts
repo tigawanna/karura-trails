@@ -55,6 +55,13 @@ const getPlugins = (bundleId: UniqueIdentifier) => {
       },
     ],
     [
+      "expo-image-picker",
+      {
+        photosPermission: "Allow Karura Trails to save photos you take of forest markers.",
+        cameraPermission: "Allow Karura Trails to use the camera when recording marker photos.",
+      },
+    ],
+    [
       "expo-splash-screen",
       {
         image: "./assets/images/splash-icon.png",

@@ -34,6 +34,11 @@ export type DrizzleDB = typeof db;
 
 let spatialMetadataReady = false;
 
+export function resetLocalDatabase(): void {
+  spatialMetadataReady = false;
+  opsqliteDb.delete();
+}
+
 export async function ensureSpatialMetadata(): Promise<void> {
   if (spatialMetadataReady) {
     return;
