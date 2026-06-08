@@ -13,6 +13,7 @@ import {
 } from "@/data-access-layer/pglite/map-points";
 import { mapWorkspaceQueryOptions, updateMapWorkspace } from "@/data-access-layer/pglite/maps";
 import {
+  insertMarkerBetweenMutationOptions,
   markerNeighborsQueryOptions,
   replaceMarkerNeighborsMutationOptions,
 } from "@/data-access-layer/pglite/marker-neighbors";
@@ -32,7 +33,15 @@ import { isPickModifierEvent } from "@/lib/map/pick-modifier";
 import { MapExplorerDetailsPanel } from "@/features/map/components/MapExplorerDetailsPanel";
 import { MapExplorerTables } from "@/features/map/components/MapExplorerTables";
 import { LeafletMapPane } from "@/features/map/components/LeafletMapPane";
+import { MapMarkerCaptureDialog } from "@/features/map/components/MapMarkerCaptureDialog";
 import { MapPointEditDialog } from "@/features/map/components/MapPointEditDialog";
+import {
+  buildMapMarkerDraftFromCoordinates,
+  finalizeMapMarkerCaptureDraft,
+  mapMarkerDraftToCreateInput,
+  type MapMarkerSaveDraft,
+} from "@/features/map/lib/map-marker-save-draft";
+import { toMapPointPlacementSource } from "@/lib/map/suggest-insert-between-marker-name";
 import { buildMapBootstrapExport, downloadJsonExport } from "@/features/map/lib/export-bootstrap";
 import { flushLocalEventsToSync } from "@/features/map/lib/flush-local-events";
 import { squashApprovedSyncEvents } from "@/features/map/lib/squash-approved-events";
@@ -72,6 +81,7 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const [locationQuery, setLocationQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [pathSlug, setPathSlug] = useState("manual-segments");
+  const [captureDraft, setCaptureDraft] = useState<MapMarkerSaveDraft | null>(null);
 
   const selection = useMapExplorerStore((state) => state.selection);
   const setSelection = useMapExplorerStore((state) => state.setSelection);
@@ -115,14 +125,15 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
 
   const createPointMutation = useMutation({
     ...createMapPointMutationOptions(db, mapId),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.mapPoints(mapId) });
-      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.localEvents() });
-      setPlacementMode(false);
-      toast.success("Marker created.");
-    },
     onError: (error) => {
       toast.error(error instanceof Error ? error.message : "Failed to create marker.");
+    },
+  });
+
+  const insertBetweenMutation = useMutation({
+    ...insertMarkerBetweenMutationOptions(db, mapId),
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to rewire neighbors.");
     },
   });
 
@@ -336,6 +347,59 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
     reader.readAsText(file);
   }
 
+  function handleMapPointPlace(latitude: number, longitude: number) {
+    const baseDraft = buildMapMarkerDraftFromCoordinates({
+      latitude,
+      longitude,
+      geoSegments,
+    });
+    const draft = finalizeMapMarkerCaptureDraft(baseDraft, {
+      mapPoints,
+      markerNeighbors,
+      geoSegments,
+      virtualContext: {
+        linkMode,
+        chainPointIds: linkChain,
+        mapPoints: mapPoints.map(toMapPointPlacementSource),
+        captureCoordinates: { latitude, longitude },
+      },
+    });
+    setCaptureDraft(draft);
+  }
+
+  async function handleCaptureSave(draft: MapMarkerSaveDraft) {
+    const insertBetween = draft.insertBetween;
+    try {
+      const point = await createPointMutation.mutateAsync(
+        mapMarkerDraftToCreateInput(mapId, draft),
+      );
+      if (insertBetween) {
+        await insertBetweenMutation.mutateAsync({
+          newMarkerId: point.id,
+          fromMarkerId: insertBetween.fromMarkerId,
+          toMarkerId: insertBetween.toMarkerId,
+        });
+      }
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.mapPoints(mapId) });
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.markerNeighbors(mapId) });
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.localEvents() });
+      setCaptureDraft(null);
+      setPlacementMode(false);
+      if (insertBetween) {
+        toast.success(
+          `Saved "${point.name ?? draft.name}" between ${insertBetween.fromRef} and ${insertBetween.toRef}.`,
+        );
+      } else if (linkMode && !linkChain.includes(point.id)) {
+        appendLinkChainPoint(point.id);
+        toast.success(`Added "${point.name ?? draft.name}" to link chain.`);
+      } else {
+        toast.success(`Saved "${point.name ?? draft.name}".`);
+      }
+    } catch {
+      return;
+    }
+  }
+
   function handleExport() {
     if (!workspace) {
       return;
@@ -512,7 +576,9 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
           <MapExplorerTables
             db={db}
             mapId={mapId}
+            mapName={workspace.name}
             mapPoints={mapPoints}
+            markerNeighbors={markerNeighbors}
             geoSegments={geoSegments}
             segmentEdges={segmentEdges}
             landmarkTypes={landmarkTypes}
@@ -587,9 +653,7 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
                       }
                       setSelection({ kind: "map-point", id: pointId });
                     }}
-                    onMapPointPlace={(latitude, longitude) => {
-                      createPointMutation.mutate({ latitude, longitude, category: "custom" });
-                    }}
+                    onMapPointPlace={handleMapPointPlace}
                     onMapPointMove={(pointId, latitude, longitude) => {
                       updatePointMutation.mutate({ pointId, latitude, longitude });
                     }}
@@ -639,6 +703,16 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
           </div>
         </Panel>
       </Group>
+
+      <MapMarkerCaptureDialog
+        draft={captureDraft}
+        mapPoints={mapPoints}
+        geoSegments={geoSegments}
+        open={captureDraft != null}
+        onClose={() => setCaptureDraft(null)}
+        onSave={(draft) => void handleCaptureSave(draft)}
+        isSaving={createPointMutation.isPending || insertBetweenMutation.isPending}
+      />
 
       <MapPointEditDialog
         point={editingPoint}

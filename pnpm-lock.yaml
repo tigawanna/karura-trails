@@ -215,6 +215,9 @@ importers:
       '@tanem/react-nprogress':
         specifier: ^6.0.3
         version: 6.0.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@tanstack/react-hotkeys':
+        specifier: ^0.10.0
+        version: 0.10.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
       '@tanstack/react-query':
         specifier: ^5.101.0
         version: 5.101.0(react@19.2.6)
@@ -247,7 +250,7 @@ importers:
         version: 0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17)
       evlog:
         specifier: ^2.18.1
-        version: 2.18.1(@tanstack/start-client-core@1.170.6)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(h3@2.0.1-rc.22(crossws@0.4.5(srvx@0.11.16)))(hono@4.12.23)(nitro@3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@16.0.3)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0))(ofetch@2.0.0-alpha.3)(react@19.2.6)
+        version: 2.18.1(@tanstack/start-client-core@1.170.6)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(h3@2.0.1-rc.22(crossws@0.4.5(srvx@0.11.16)))(hono@4.12.23)(nitro@3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0))(ofetch@2.0.0-alpha.3)(react@19.2.6)
       hono:
         specifier: ^4.12.18
         version: 4.12.23
@@ -326,7 +329,7 @@ importers:
         version: 0.31.10
       nitro:
         specifier: 3.0.260603-beta
-        version: 3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@16.0.3)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0)
+        version: 3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0)
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
@@ -3224,6 +3227,10 @@ packages:
     resolution: {integrity: sha512-79pf/RkhteYZTRgcR4F9kbk84P2N8rugQJswxfIqovlbRiT3yI7eBE+5QorIrZaOKktsgzRlXh1l/du/xpl4iA==}
     engines: {node: '>=20.19'}
 
+  '@tanstack/hotkeys@0.8.0':
+    resolution: {integrity: sha512-vqH7X9nb0MTJ/O08++dB5bP9jgj4+BIPOUu/U+6myG86lDsirZSVSobpq5UQpE7nBuk62i8eIYeOhd+OMl/UrA==}
+    engines: {node: '>=18'}
+
   '@tanstack/query-core@5.100.14':
     resolution: {integrity: sha512-5X41dGpxgeaHISCRW2oYwcSycZeULZzAunaudXT9ov1KOTj9xwt0CH6hbwqP1/z74ZWF7rYFnDpyYH07XFcZew==}
 
@@ -3239,6 +3246,13 @@ packages:
     peerDependencies:
       '@types/react': '>=16.8'
       '@types/react-dom': '>=16.8'
+      react: '>=16.8'
+      react-dom: '>=16.8'
+
+  '@tanstack/react-hotkeys@0.10.0':
+    resolution: {integrity: sha512-GwOSndI5j3qBVYTmgP1mYyRTnlxb2MS17cwGlsavSxMQPSnmDf+m3LzMIpRMs+3zzQMjg3cYhHsFYizYlFI2tw==}
+    engines: {node: '>=18'}
+    peerDependencies:
       react: '>=16.8'
       react-dom: '>=16.8'
 
@@ -3323,6 +3337,12 @@ packages:
       vite:
         optional: true
 
+  '@tanstack/react-store@0.11.0':
+    resolution: {integrity: sha512-tX4YXh3PDkmpvGQWkWqKpzs/MSqbtuwY9dWdWhtV9Q50PmO+jOkUKIWIX4G85dwt7lxdHLXsiaEKPdKmC8F41w==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   '@tanstack/react-store@0.9.3':
     resolution: {integrity: sha512-y2iHd/N9OkoQbFJLUX1T9vbc2O9tjH0pQRgTcx1/Nz4IlwLvkgpuglXUx+mXt0g5ZDFrEeDnONPqkbfxXJKwRg==}
     peerDependencies:
@@ -3396,6 +3416,9 @@ packages:
   '@tanstack/start-storage-context@1.167.10':
     resolution: {integrity: sha512-geCsFpgCt+S2gQjzXILdPZ9obIxtzuN8C0Esc1fcyWZhwYyqo4C8G2o/dIck8xGixCMSvOsxL5NkCXDdOm2KOQ==}
     engines: {node: '>=22.12.0'}
+
+  '@tanstack/store@0.11.0':
+    resolution: {integrity: sha512-WlzzCt3xi0G6pCAJu1U+2jiECwabETDpQDi3hfkFZvJii9AuZqEKbOiVarX1/bWhTNjU486yQtJCCasi/0q+Cw==}
 
   '@tanstack/store@0.9.3':
     resolution: {integrity: sha512-8reSzl/qGWGGVKhBoxXPMWzATSbZLZFWhwBAFO9NAyp0TxzfBP0mIrGb8CP8KrQTmvzXlR/vFPPUrHTLBGyFyw==}
@@ -10693,6 +10716,10 @@ snapshots:
 
   '@tanstack/history@1.162.0': {}
 
+  '@tanstack/hotkeys@0.8.0':
+    dependencies:
+      '@tanstack/store': 0.11.0
+
   '@tanstack/query-core@5.100.14': {}
 
   '@tanstack/query-core@5.101.0': {}
@@ -10711,6 +10738,13 @@ snapshots:
       - csstype
       - solid-js
       - utf-8-validate
+
+  '@tanstack/react-hotkeys@0.10.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+    dependencies:
+      '@tanstack/hotkeys': 0.8.0
+      '@tanstack/react-store': 0.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
 
   '@tanstack/react-query-devtools@5.101.0(@tanstack/react-query@5.101.0(react@19.2.6))(react@19.2.6)':
     dependencies:
@@ -10812,6 +10846,13 @@ snapshots:
       - supports-color
       - vite-plugin-solid
       - webpack
+
+  '@tanstack/react-store@0.11.0(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
+    dependencies:
+      '@tanstack/store': 0.11.0
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      use-sync-external-store: 1.6.0(react@19.2.6)
 
   '@tanstack/react-store@0.9.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
@@ -10937,6 +10978,8 @@ snapshots:
   '@tanstack/start-storage-context@1.167.10':
     dependencies:
       '@tanstack/router-core': 1.171.8
+
+  '@tanstack/store@0.11.0': {}
 
   '@tanstack/store@0.9.3': {}
 
@@ -12635,12 +12678,12 @@ snapshots:
 
   event-target-shim@5.0.1: {}
 
-  evlog@2.18.1(@tanstack/start-client-core@1.170.6)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(h3@2.0.1-rc.22(crossws@0.4.5(srvx@0.11.16)))(hono@4.12.23)(nitro@3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@16.0.3)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0))(ofetch@2.0.0-alpha.3)(react@19.2.6):
+  evlog@2.18.1(@tanstack/start-client-core@1.170.6)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(h3@2.0.1-rc.22(crossws@0.4.5(srvx@0.11.16)))(hono@4.12.23)(nitro@3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0))(ofetch@2.0.0-alpha.3)(react@19.2.6):
     optionalDependencies:
       '@tanstack/start-client-core': 1.170.6
       h3: 2.0.1-rc.22(crossws@0.4.5(srvx@0.11.16))
       hono: 4.12.23
-      nitro: 3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@16.0.3)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0)
+      nitro: 3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0)
       ofetch: 2.0.0-alpha.3
       react: 19.2.6
       vite: '@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'
@@ -13883,7 +13926,7 @@ snapshots:
 
   nf3@0.3.17: {}
 
-  nitro@3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@16.0.3)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0):
+  nitro@3.0.260603-beta(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(dotenv@17.4.2)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17))(giget@3.2.0)(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260603.0)(xml2js@0.6.0):
     dependencies:
       consola: 3.4.2
       crossws: 0.4.5(srvx@0.11.16)
@@ -13900,7 +13943,7 @@ snapshots:
       unenv: 2.0.0-rc.24
       unstorage: 2.0.0-alpha.7(chokidar@5.0.0)(db0@0.3.4(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(drizzle-orm@0.45.2(@cloudflare/workers-types@4.20260608.1)(@electric-sql/pglite@0.5.1)(@libsql/client@0.17.3)(@op-engineering/op-sqlite@16.2.0(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.2.15)(react@19.2.6))(react@19.2.6))(kysely@0.28.17)))(lru-cache@11.5.1)(ofetch@2.0.0-alpha.3)
     optionalDependencies:
-      dotenv: 16.0.3
+      dotenv: 17.4.2
       giget: 3.2.0
       jiti: 2.7.0
       vite: '@voidzero-dev/vite-plus-core@0.1.23(@types/node@25.9.1)(esbuild@0.25.12)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@6.0.3)(yaml@2.9.0)'

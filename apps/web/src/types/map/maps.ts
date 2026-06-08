@@ -24,6 +24,7 @@ export type MapDataExplorerTab =
   | "links"
   | "trails"
   | "route"
+  | "rename"
   | "events";
 
 export type MapDataExplorerSelection =

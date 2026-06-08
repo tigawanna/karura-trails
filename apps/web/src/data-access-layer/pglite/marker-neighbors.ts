@@ -158,3 +158,59 @@ export function addMarkerNeighborMutationOptions(db: PgliteDb, mapId: number) {
       addMarkerNeighborLink(db, mapId, input.fromMarkerId, input.toMarkerId),
   });
 }
+
+async function listOutgoingNeighborIds(db: PgliteDb, mapId: number, markerId: number) {
+  const rows = await db
+    .select({ toMarkerId: markerNeighborTable.toMarkerId })
+    .from(markerNeighborTable)
+    .where(
+      and(eq(markerNeighborTable.mapId, mapId), eq(markerNeighborTable.fromMarkerId, markerId)),
+    );
+
+  return new Set(rows.map((row) => row.toMarkerId));
+}
+
+export async function insertMarkerBetween(
+  db: PgliteDb,
+  input: {
+    mapId: number;
+    newMarkerId: number;
+    fromMarkerId: number;
+    toMarkerId: number;
+  },
+) {
+  const fromNeighbors = await listOutgoingNeighborIds(db, input.mapId, input.fromMarkerId);
+  const toNeighbors = await listOutgoingNeighborIds(db, input.mapId, input.toMarkerId);
+
+  if (!fromNeighbors.has(input.toMarkerId) || !toNeighbors.has(input.fromMarkerId)) {
+    throw new Error("Markers must already be linked neighbors.");
+  }
+
+  fromNeighbors.delete(input.toMarkerId);
+  fromNeighbors.add(input.newMarkerId);
+  toNeighbors.delete(input.fromMarkerId);
+  toNeighbors.add(input.newMarkerId);
+
+  await replaceMarkerNeighbors(db, {
+    mapId: input.mapId,
+    fromMarkerId: input.fromMarkerId,
+    toMarkerIds: [...fromNeighbors],
+  });
+  await replaceMarkerNeighbors(db, {
+    mapId: input.mapId,
+    fromMarkerId: input.toMarkerId,
+    toMarkerIds: [...toNeighbors],
+  });
+  await replaceMarkerNeighbors(db, {
+    mapId: input.mapId,
+    fromMarkerId: input.newMarkerId,
+    toMarkerIds: [input.fromMarkerId, input.toMarkerId],
+  });
+}
+
+export function insertMarkerBetweenMutationOptions(db: PgliteDb, mapId: number) {
+  return mutationOptions({
+    mutationFn: (input: { newMarkerId: number; fromMarkerId: number; toMarkerId: number }) =>
+      insertMarkerBetween(db, { mapId, ...input }),
+  });
+}

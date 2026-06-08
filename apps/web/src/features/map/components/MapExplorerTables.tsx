@@ -1,4 +1,5 @@
 import { MapLandmarkTypesTable } from "@/features/map/components/MapLandmarkTypesTable";
+import { MapMarkerRenamePanel } from "@/features/map/components/MapMarkerRenamePanel";
 import { SegmentBuildFromPathPanel } from "@/features/map/components/SegmentBuildFromPathPanel";
 import { useMapExplorerStore } from "@/features/map/store/map-explorer-store";
 import type { PgliteDb } from "@/lib/pglite/client";
@@ -8,6 +9,7 @@ import type { MapLandmarkTypeRecord } from "@/types/map/landmark-types";
 import type { MapPointRecord } from "@/types/map/map-points";
 import type { MapDataExplorerTab } from "@/types/map/maps";
 import type { SegmentEdgeRecord } from "@/types/map/segment-edges";
+import type { MarkerNeighborRecord } from "@/types/map/marker-neighbors";
 import type { ReactNode } from "react";
 
 const TABS: { id: MapDataExplorerTab; label: string }[] = [
@@ -16,13 +18,16 @@ const TABS: { id: MapDataExplorerTab; label: string }[] = [
   { id: "segments", label: "Segments" },
   { id: "links", label: "Links" },
   { id: "route", label: "Route" },
+  { id: "rename", label: "Rename" },
   { id: "events", label: "Local events" },
 ];
 
 type MapExplorerTablesProps = {
   db: PgliteDb;
   mapId: number;
+  mapName: string;
   mapPoints: MapPointRecord[];
+  markerNeighbors: MarkerNeighborRecord[];
   geoSegments: GeoSegmentRecord[];
   segmentEdges: SegmentEdgeRecord[];
   landmarkTypes: MapLandmarkTypeRecord[];
@@ -50,7 +55,9 @@ function selectRowClass(isSelected: boolean) {
 export function MapExplorerTables({
   db,
   mapId,
+  mapName,
   mapPoints,
+  markerNeighbors,
   geoSegments,
   segmentEdges,
   landmarkTypes,
@@ -205,6 +212,16 @@ export function MapExplorerTables({
         ) : null}
 
         {tab === "route" ? routePanel : null}
+
+        {tab === "rename" ? (
+          <MapMarkerRenamePanel
+            db={db}
+            mapId={mapId}
+            mapName={mapName}
+            mapPoints={mapPoints}
+            markerNeighbors={markerNeighbors}
+          />
+        ) : null}
 
         {tab === "events" ? (
           <div className="overflow-x-auto rounded-box border border-base-content/10">
