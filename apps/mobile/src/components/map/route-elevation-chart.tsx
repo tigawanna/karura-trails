@@ -8,7 +8,6 @@ import { markerLabel } from "@/geo/nearest-marker";
 import {
   computeElevationAheadSummary,
   formatElevationAheadSummary,
-  getUpcomingRouteMarkers,
 } from "@/geo/route-elevation-summary";
 import { Spacing } from "@/theme";
 

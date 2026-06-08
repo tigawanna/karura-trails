@@ -1,159 +1,140 @@
-# Turborepo starter
+# Karura Trails
 
-This Turborepo starter is maintained by the Turborepo core team.
+Forest trail maps, field marker capture, and an admin sync hub for Karura Forest.
 
-## Using this example
+| App        | Stack                                  | Purpose                                             |
+| ---------- | -------------------------------------- | --------------------------------------------------- |
+| **mobile** | Expo, MapLibre, SpatiaLite             | Offline maps, navigation, marker edits in the field |
+| **web**    | TanStack Start, Cloudflare Workers, D1 | Landing page, admin dashboard, auth, sync API       |
 
-Run the following command:
+Architecture detail: [ARCHITECTURE.md](./ARCHITECTURE.md)
 
-```sh
-npx create-turbo@latest
+---
+
+## Prerequisites
+
+- Node.js 18+
+- [pnpm](https://pnpm.io/) 9+
+- For mobile: Android Studio and/or Xcode, Expo CLI workflow
+- For web deploy: [Cloudflare](https://dash.cloudflare.com/) account + Wrangler
+
+---
+
+## Monorepo
+
+```
+apps/
+  mobile/     Expo app (primary product)
+  web/        TanStack Start on Cloudflare Workers
+packages/     Shared TS / ESLint configs
 ```
 
-## What's inside?
+Managed with **pnpm workspaces** and **Turborepo**.
 
-This Turborepo includes the following packages/apps:
+---
 
-### Apps and Packages
+## Getting started
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+### Install
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
+```bash
+pnpm install
 ```
 
-Without global `turbo`, use your package manager:
+### Web (admin + sync API)
 
-```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
+```bash
+cd apps/web
+cp .env.example .env
+cp .dev.vars.example .dev.vars   # edit secrets — see ARCHITECTURE.md
+pnpm db:migrate:local
+pnpm dev                         # http://localhost:3050
 ```
 
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+Sign up at `/auth/signup` with the email matching `ADMIN_EMAIL` in `.dev.vars` to access `/dashboard`.
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+### Mobile
 
-```sh
-turbo build --filter=docs
+```bash
+cd apps/mobile
+pnpm dev                         # Expo dev server
+# or
+pnpm run:android
+pnpm run:ios
 ```
 
-Without global `turbo`:
+See `apps/mobile/GAMEPLAN.md` for schema, routing, and build profiles.
 
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+### All apps (from root)
+
+```bash
+pnpm dev
+pnpm build
+pnpm check-types
 ```
 
-### Develop
+Filter to one app:
 
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
+```bash
+pnpm dev --filter=web
+pnpm dev --filter=mobile
 ```
 
-Without global `turbo`, use your package manager:
+---
 
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
+## Web environment
+
+Two files in `apps/web`:
+
+| File        | Scope                                                    |
+| ----------- | -------------------------------------------------------- |
+| `.env`      | Vite client (`VITE_API_URL`, `VITE_GOOGLE_AUTH_ENABLED`) |
+| `.dev.vars` | Worker secrets (auth, CORS, sync secret, Google OAuth)   |
+
+Full variable list: [ARCHITECTURE.md — Environment](./ARCHITECTURE.md#environment)
+
+---
+
+## Deploy web to Cloudflare
+
+```bash
+cd apps/web
+# 1. Set real database_id in wrangler.jsonc (wrangler d1 create karura-trails-db)
+# 2. wrangler secret put BETTER_AUTH_SECRET  (and other secrets)
+pnpm db:migrate:remote
+pnpm deploy
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
+---
 
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+## Sync API (dev)
 
-```sh
-turbo dev --filter=web
+Mobile clients (or curl) can push events:
+
+```bash
+curl -X POST http://localhost:3050/api/sync/events \
+  -H "Content-Type: application/json" \
+  -H "x-sync-secret: local-dev-sync-secret" \
+  -d '{"deviceId":"test","events":[{"id":"01932f8a-7c3a-7000-8000-000000000001","deviceId":"test","table":"points","rowId":"42","action":"create","payload":{},"createdAt":"2026-06-08T12:00:00.000Z"}]}'
 ```
 
-Without global `turbo`:
+Admins verify events at `/events`. Verified events are returned on `GET /api/sync/events`.
 
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+Protocol: `apps/mobile/docs/EVENT-SYNC-PLAN.md`
+
+---
+
+## Quality
+
+```bash
+pnpm lint
+pnpm format
+pnpm quality        # lint + format check
+pnpm quality:fix
 ```
 
-### Remote Caching
+---
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+## License
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+See per-app license files where applicable (`apps/mobile/LICENSE`).

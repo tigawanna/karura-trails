@@ -5,15 +5,17 @@ import { focusManager, onlineManager } from "@tanstack/react-query";
 import * as Network from "expo-network";
 
 export function useOnlineManager() {
-    if(Platform.OS === "web") return
-    // For Expo Go
-    // React Query already supports in web browser refetch on window focus by default 
- onlineManager.setEventListener((setOnline) => {
-   const eventSubscription = Network.addNetworkStateListener((state) => {
-     setOnline(!!state.isConnected);
-   });
-   return eventSubscription.remove;
- });
+  if (Platform.OS === "web") return;
+  // For Expo Go
+  // React Query already supports in web browser refetch on window focus by default
+  onlineManager.setEventListener((setOnline) => {
+    const eventSubscription = Network.addNetworkStateListener((state) => {
+      setOnline(!!state.isConnected);
+    });
+    return () => {
+      eventSubscription.remove();
+    };
+  });
 }
 
 export function useRefreshOnFocus<T>(refetch: () => Promise<T>) {
@@ -26,12 +28,10 @@ export function useRefreshOnFocus<T>(refetch: () => Promise<T>) {
         return;
       }
 
-      refetch();
-    }, [refetch])
+      void refetch();
+    }, [refetch]),
   );
 }
-
-
 
 export function useAppState(onChange: (status: AppStateStatus) => void) {
   useEffect(() => {
@@ -41,8 +41,6 @@ export function useAppState(onChange: (status: AppStateStatus) => void) {
     };
   }, [onChange]);
 }
-
-
 
 export function useRefreshByUser(refetch: () => Promise<unknown>) {
   const [isRefetchingByUser, setIsRefetchingByUser] = React.useState(false);
@@ -62,7 +60,6 @@ export function useRefreshByUser(refetch: () => Promise<unknown>) {
     refetchByUser,
   };
 }
-
 
 export function onAppStateChange(status: AppStateStatus) {
   // React Query already supports in web browser refetch on window focus by default

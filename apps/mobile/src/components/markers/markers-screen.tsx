@@ -9,7 +9,6 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { landmarkTypesQueryOptions } from "@/data-access-layer/landmark-types";
 import { enrichedRoutingPointsQueryOptions } from "@/data-access-layer/routing-graph";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
-import { markerLabel } from "@/geo/nearest-marker";
 import { markerListKey, useMarkersFilter } from "@/hooks/use-markers-filter";
 import { MaxContentWidth, Spacing } from "@/theme";
 

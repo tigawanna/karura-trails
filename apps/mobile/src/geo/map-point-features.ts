@@ -1,5 +1,4 @@
 import type { LandmarkTypeRecord } from "@/geo/landmark-type-records";
-import type { PointCategory } from "@/lib/drizzle/schema";
 
 export type PointMetadata = Record<string, string>;
 
@@ -46,7 +45,7 @@ function haystackIncludes(haystack: string, needles: string[]): boolean {
 }
 
 export function inferMapPointFeatureSlugs(input: {
-  category: PointCategory | string | null;
+  category: string | null;
   name?: string | null;
   ref?: string | null;
   metadata?: PointMetadata;
@@ -133,7 +132,7 @@ export function inferMapPointFeatureSlugs(input: {
 }
 
 export function resolveMapPointFeatureSlugs(input: {
-  category: PointCategory | string | null;
+  category: string | null;
   name?: string | null;
   ref?: string | null;
   metadata?: PointMetadata;
@@ -160,7 +159,7 @@ export function formatMapPointFeatureSlugs(
 
 export function mapPointFeatureSearchHaystack(
   input: {
-    category: PointCategory | string | null;
+    category: string | null;
     name?: string | null;
     ref?: string | null;
     description?: string | null;

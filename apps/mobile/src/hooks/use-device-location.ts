@@ -81,7 +81,7 @@ export function useDeviceLocation() {
   const clearSpoof = useCallback(async () => {
     await clearLocationSpoof();
     queryClient.setQueryData([queryKeyPrefixes.devLocationSpoof], null);
-    queryClient.invalidateQueries({ queryKey: [queryKeyPrefixes.deviceLocation, "gps"] });
+    void queryClient.invalidateQueries({ queryKey: [queryKeyPrefixes.deviceLocation, "gps"] });
   }, [queryClient]);
 
   const { mutate: refreshLocation, isPending: isRefreshing } = useMutation({

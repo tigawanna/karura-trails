@@ -42,7 +42,7 @@ function errorToDetail(err: unknown, depth = 0): ErrorDetail {
       message: JSON.stringify(err),
     };
   } catch {
-    return { kind: "unknown", message: String(err) };
+    return { kind: "unknown", message: "[unserializable value]" };
   }
 }
 

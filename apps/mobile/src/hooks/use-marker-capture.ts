@@ -28,9 +28,7 @@ export function useMarkerCapture({ initialDraft, onSaved }: UseMarkerCaptureOpti
   const queryClient = useQueryClient();
   const [lng, setLng] = useState(() => initialDraft?.lng.toFixed(6) ?? "");
   const [lat, setLat] = useState(() => initialDraft?.lat.toFixed(6) ?? "");
-  const [gpsAltitude, setGpsAltitude] = useState<number | null>(
-    () => initialDraft?.gpsAltitude ?? null,
-  );
+  const [gpsAltitude] = useState<number | null>(() => initialDraft?.gpsAltitude ?? null);
   const [manualElevation, setManualElevation] = useState("");
   const [elevationTouched, setElevationTouched] = useState(false);
   const [category, setCategory] = useState<PointCategory>(DEFAULT_CATEGORY);

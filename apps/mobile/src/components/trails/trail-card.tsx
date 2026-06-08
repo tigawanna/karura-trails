@@ -8,7 +8,7 @@ import {
   formatTrailElevation,
 } from "@/lib/format-trail-stats";
 import type { PathSelect, TrailDifficulty } from "@/lib/drizzle/schema";
-import { MaxContentWidth, Spacing, useTheme as useAppTheme } from "@/theme";
+import { MaxContentWidth, Spacing } from "@/theme";
 
 export type TrailCardProps = {
   trail: PathSelect;
@@ -51,7 +51,6 @@ function StatBlock({
 
 export function TrailCard({ trail, testID }: TrailCardProps) {
   const { colors } = useTheme();
-  const appTheme = useAppTheme();
   const difficulty = isTrailDifficulty(trail.difficulty) ? trail.difficulty : null;
   const tone = difficulty ? difficultyTone[difficulty] : "tertiary";
   const badgeBackground =

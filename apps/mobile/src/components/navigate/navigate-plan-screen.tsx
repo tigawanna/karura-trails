@@ -59,7 +59,6 @@ export function NavigatePlanScreen() {
   const searchResults = useMarkerSearch(searchQuery, 16);
 
   const startPoint = resolveMarkerByRef(pointsByRef, startRef ?? undefined);
-  const endPoint = resolveMarkerByRef(pointsByRef, endRef ?? undefined);
 
   const suggestions = useMemo(() => {
     if (!startPoint) {
