@@ -1,4 +1,10 @@
-import { TanstackDevtools } from "@/lib/tanstack/devtools/devtools";
+import { lazy, Suspense } from "react";
+
+const TanstackDevtools = lazy(() =>
+  import("@/lib/tanstack/devtools/devtools").then((module) => ({
+    default: module.TanstackDevtools,
+  })),
+);
 import {
   TanstackQueryProvider,
   getTanstackQueryContext,
@@ -57,7 +63,11 @@ function RootDocument() {
           <TanstackQueryProvider queryClient={queryClient}>
             <Outlet />
             <Toaster />
-            {import.meta.env.DEV ? <TanstackDevtools /> : null}
+            {import.meta.env.DEV ? (
+              <Suspense fallback={null}>
+                <TanstackDevtools />
+              </Suspense>
+            ) : null}
           </TanstackQueryProvider>
         </ThemeProvider>
         <Scripts />

@@ -1,24 +1,32 @@
 import { Button } from "@/components/ui/button";
+import { MapMarkerNeighborsSection } from "@/features/map/components/MapMarkerNeighborsSection";
 import type { GeoSegmentRecord } from "@/types/map/geo-segments";
 import type { MapPointRecord } from "@/types/map/map-points";
 import type { MapDataExplorerSelection } from "@/types/map/maps";
+import type { MarkerNeighborRecord } from "@/types/map/marker-neighbors";
 import type { SegmentEdgeRecord } from "@/types/map/segment-edges";
 import { Pencil } from "lucide-react";
 
 type MapExplorerDetailsPanelProps = {
   selection: MapDataExplorerSelection | null;
   mapPoints: MapPointRecord[];
+  markerNeighbors: MarkerNeighborRecord[];
   geoSegments: GeoSegmentRecord[];
   segmentEdges: SegmentEdgeRecord[];
   onEditPoint: (pointId: number) => void;
+  onReplaceNeighbors: (pointId: number, toMarkerIds: number[]) => void;
+  isSavingNeighbors?: boolean;
 };
 
 export function MapExplorerDetailsPanel({
   selection,
   mapPoints,
+  markerNeighbors,
   geoSegments,
   segmentEdges,
   onEditPoint,
+  onReplaceNeighbors,
+  isSavingNeighbors = false,
 }: MapExplorerDetailsPanelProps) {
   if (!selection) {
     return (
@@ -60,6 +68,13 @@ export function MapExplorerDetailsPanel({
           <dt className="text-base-content/50">Description</dt>
           <dd>{point.description ?? "—"}</dd>
         </dl>
+        <MapMarkerNeighborsSection
+          point={point}
+          mapPoints={mapPoints}
+          markerNeighbors={markerNeighbors}
+          isSaving={isSavingNeighbors}
+          onReplaceNeighbors={(toMarkerIds) => onReplaceNeighbors(point.id, toMarkerIds)}
+        />
       </div>
     );
   }

@@ -1,4 +1,7 @@
-import { geoSegmentsQueryOptions } from "@/data-access-layer/pglite/geo-segments";
+import {
+  geoSegmentsQueryOptions,
+  seedTrailsMutationOptions,
+} from "@/data-access-layer/pglite/geo-segments";
 import { listLocalEvents } from "@/data-access-layer/pglite/local-events";
 import {
   createMapPointMutationOptions,
@@ -7,16 +10,27 @@ import {
   updateMapPointMutationOptions,
 } from "@/data-access-layer/pglite/map-points";
 import { mapWorkspaceQueryOptions, updateMapWorkspace } from "@/data-access-layer/pglite/maps";
-import { markerNeighborsQueryOptions } from "@/data-access-layer/pglite/marker-neighbors";
+import {
+  markerNeighborsQueryOptions,
+  replaceMarkerNeighborsMutationOptions,
+} from "@/data-access-layer/pglite/marker-neighbors";
 import { pgliteQueryKeys } from "@/data-access-layer/pglite/query-keys";
-import { segmentEdgesQueryOptions } from "@/data-access-layer/pglite/segment-edges";
+import {
+  createSegmentEdgeChainMutationOptions,
+  segmentEdgesQueryOptions,
+} from "@/data-access-layer/pglite/segment-edges";
 import { trailsQueryOptions } from "@/data-access-layer/pglite/trails";
+import { MapLinkComposerPanel } from "@/features/map/components/MapLinkComposerPanel";
+import { useLinkRoutePlanner } from "@/features/map/hooks/useLinkRoutePlanner";
+import { isPickModifierEvent } from "@/lib/map/pick-modifier";
 import { MapExplorerDetailsPanel } from "@/features/map/components/MapExplorerDetailsPanel";
 import { MapExplorerTables } from "@/features/map/components/MapExplorerTables";
 import { LeafletMapPane } from "@/features/map/components/LeafletMapPane";
 import { MapPointEditDialog } from "@/features/map/components/MapPointEditDialog";
 import { buildMapBootstrapExport, downloadJsonExport } from "@/features/map/lib/export-bootstrap";
 import { flushLocalEventsToSync } from "@/features/map/lib/flush-local-events";
+import { squashApprovedSyncEvents } from "@/features/map/lib/squash-approved-events";
+import { fetchAdminSyncEvents } from "@/services/sync/sync.api";
 import { useMapExplorerStore } from "@/features/map/store/map-explorer-store";
 import {
   buildDeadEndMarkerIds,
@@ -26,7 +40,7 @@ import {
 import { MAP_POINT_FOCUS_ZOOM, type MapHandle } from "@/lib/map/map-handle";
 import { usePglite } from "@/lib/pglite/components/PgliteProvider.client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, MapPin, RefreshCw, Search, Upload } from "lucide-react";
+import { Database, Download, Link2, MapPin, RefreshCw, Search, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Group, Panel, Separator } from "react-resizable-panels";
@@ -41,6 +55,7 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const mapHandleRef = useRef<MapHandle | null>(null);
   const [locationQuery, setLocationQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
+  const [pathSlug, setPathSlug] = useState("manual-segments");
 
   const selection = useMapExplorerStore((state) => state.selection);
   const setSelection = useMapExplorerStore((state) => state.setSelection);
@@ -52,6 +67,14 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const setShowNeighborCoverage = useMapExplorerStore((state) => state.setShowNeighborCoverage);
   const showSegments = useMapExplorerStore((state) => state.showSegments);
   const setShowSegments = useMapExplorerStore((state) => state.setShowSegments);
+  const linkMode = useMapExplorerStore((state) => state.linkMode);
+  const setLinkMode = useMapExplorerStore((state) => state.setLinkMode);
+  const linkChain = useMapExplorerStore((state) => state.linkChain);
+  const setLinkChain = useMapExplorerStore((state) => state.setLinkChain);
+  const appendLinkChainPoint = useMapExplorerStore((state) => state.appendLinkChainPoint);
+  const removeLinkChainPointAt = useMapExplorerStore((state) => state.removeLinkChainPointAt);
+  const clearLinkChain = useMapExplorerStore((state) => state.clearLinkChain);
+  const setStatusMessage = useMapExplorerStore((state) => state.setStatusMessage);
   const reset = useMapExplorerStore((state) => state.reset);
 
   useEffect(() => {
@@ -120,6 +143,60 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
     },
   });
 
+  const seedTrailsMutation = useMutation({
+    ...seedTrailsMutationOptions(db, mapId),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.geoSegments(mapId) });
+      if (result.skipped) {
+        toast.message("Trail segments already loaded.");
+      } else {
+        toast.success(`Imported ${result.imported} trail segments.`);
+      }
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to import trails.");
+    },
+  });
+
+  const replaceNeighborsMutation = useMutation({
+    ...replaceMarkerNeighborsMutationOptions(db, mapId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.markerNeighbors(mapId) });
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.localEvents() });
+      toast.success("Neighbors updated.");
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to update neighbors.");
+    },
+  });
+
+  const squashMutation = useMutation({
+    mutationFn: async () => {
+      const response = await fetchAdminSyncEvents();
+      return squashApprovedSyncEvents(db, mapId, response.events);
+    },
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.mapPoints(mapId) });
+      toast.success(`Squashed ${result.applied} of ${result.total} approved event(s).`);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to squash approved events.");
+    },
+  });
+
+  const createChainMutation = useMutation({
+    ...createSegmentEdgeChainMutationOptions(db, mapId),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.segmentEdges(mapId) });
+      await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.localEvents() });
+      clearLinkChain();
+      toast.success(`Created ${result.segments.length} segment edge(s).`);
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to save segment edges.");
+    },
+  });
+
   const workspace = mapQuery.data;
   const mapPoints = mapPointsQuery.data ?? [];
   const geoSegments = geoSegmentsQueryResult.data ?? [];
@@ -128,6 +205,13 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const trails = trailsQuery.data ?? [];
   const localEvents = localEventsQuery.data ?? [];
   const pendingEventCount = localEvents.filter((event) => !event.flushed).length;
+
+  const routePlanner = useLinkRoutePlanner({
+    mapPoints,
+    markerNeighbors,
+    onApplyChain: setLinkChain,
+    onStatusMessage: setStatusMessage,
+  });
 
   const markerIdsWithNeighborLinks = useMemo(
     () => buildMarkerIdsWithNeighborLinks(markerNeighbors),
@@ -236,10 +320,37 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
             <button
               type="button"
               className={placementMode ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
-              onClick={() => setPlacementMode(!placementMode)}
+              onClick={() => {
+                setPlacementMode(!placementMode);
+                if (!placementMode) {
+                  setLinkMode(false);
+                }
+              }}
             >
               <MapPin className="size-3.5" />
               Place marker
+            </button>
+            <button
+              type="button"
+              className={linkMode ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
+              onClick={() => {
+                setLinkMode(!linkMode);
+                if (!linkMode) {
+                  setPlacementMode(false);
+                }
+              }}
+            >
+              <Link2 className="size-3.5" />
+              Link mode
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              disabled={seedTrailsMutation.isPending}
+              onClick={() => seedTrailsMutation.mutate()}
+            >
+              <Database className="size-3.5" />
+              Import trails
             </button>
             <button
               type="button"
@@ -263,6 +374,14 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
             >
               <Upload className="size-3.5" />
               Flush events
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => squashMutation.mutate()}
+              disabled={squashMutation.isPending}
+            >
+              Squash approved
             </button>
             <button type="button" className="btn btn-outline btn-sm" onClick={handleExport}>
               <Download className="size-3.5" />
@@ -292,6 +411,20 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
             segmentEdges={segmentEdges}
             pendingEventCount={pendingEventCount}
             localEvents={localEvents}
+            routePanel={
+              <MapLinkComposerPanel
+                mapPoints={mapPoints}
+                linkChain={linkChain}
+                pathSlug={pathSlug}
+                onPathSlugChange={setPathSlug}
+                onAppendToChain={appendLinkChainPoint}
+                onRemoveFromChain={removeLinkChainPointAt}
+                onClearChain={clearLinkChain}
+                isSaving={createChainMutation.isPending}
+                onSaveSegments={() => createChainMutation.mutate({ pointIds: linkChain, pathSlug })}
+                routePlanner={routePlanner}
+              />
+            }
           />
         </Panel>
         <Separator className="w-1 bg-base-content/10" />
@@ -306,6 +439,11 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
                 selectedMapPointId={selectedMapPointId}
                 selectedSegmentId={selectedSegmentId}
                 placementMode={placementMode}
+                linkMode={linkMode || routePlanner.pickTarget != null}
+                linkChainPointIds={linkChain}
+                linkRouteStartId={routePlanner.startId}
+                linkRouteEndId={routePlanner.endId}
+                linkRouteViaIds={routePlanner.viaIds}
                 showSegments={showSegments}
                 showNeighborCoverage={showNeighborCoverage}
                 markerIdsWithNeighborLinks={markerIdsWithNeighborLinks}
@@ -321,7 +459,14 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
                     mapZoom: viewport.zoom,
                   });
                 }}
-                onMapPointClick={(pointId) => {
+                onMapPointClick={(pointId, modifiers) => {
+                  if (routePlanner.handleMapPointClickForRoutePick(pointId)) {
+                    return;
+                  }
+                  if (linkMode && isPickModifierEvent(modifiers)) {
+                    appendLinkChainPoint(pointId);
+                    return;
+                  }
                   setSelection({ kind: "map-point", id: pointId });
                 }}
                 onMapPointPlace={(latitude, longitude) => {
@@ -341,9 +486,14 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
                 <MapExplorerDetailsPanel
                   selection={selection}
                   mapPoints={mapPoints}
+                  markerNeighbors={markerNeighbors}
                   geoSegments={geoSegments}
                   segmentEdges={segmentEdges}
+                  isSavingNeighbors={replaceNeighborsMutation.isPending}
                   onEditPoint={(pointId) => setEditPointId(pointId)}
+                  onReplaceNeighbors={(pointId, toMarkerIds) =>
+                    replaceNeighborsMutation.mutate({ fromMarkerId: pointId, toMarkerIds })
+                  }
                 />
               </div>
             </Panel>

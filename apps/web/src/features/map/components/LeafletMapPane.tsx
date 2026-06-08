@@ -13,7 +13,7 @@ import {
   type MapHandle,
 } from "@/lib/map/map-handle";
 import type { MapViewport } from "@/types/map/maps";
-import { isPickModifierEvent, usePickModifierHeld } from "@/lib/map/pick-modifier";
+import { usePickModifierHeld } from "@/lib/map/pick-modifier";
 import { lineStringToLatLngs, segmentGroupColor } from "@/lib/map/segment-utils";
 import type { GeoSegmentRecord } from "@/types/map/geo-segments";
 import type { MapPointRecord } from "@/types/map/map-points";
@@ -47,6 +47,11 @@ export type LeafletMapPaneProps = {
   markerNeighbors?: MarkerNeighborRecord[];
   selectedMapPointId?: number | null;
   placementMode?: boolean;
+  linkMode?: boolean;
+  linkChainPointIds?: number[];
+  linkRouteStartId?: number | null;
+  linkRouteEndId?: number | null;
+  linkRouteViaIds?: number[];
   showSegments?: boolean;
   showNeighborCoverage?: boolean;
   markerIdsWithNeighborLinks?: number[];
@@ -54,7 +59,7 @@ export type LeafletMapPaneProps = {
   naturalEndpointMarkerIds?: number[];
   onReady: (handle: MapHandle) => void;
   onViewportChange: (viewport: MapViewport) => void;
-  onMapPointClick?: (pointId: number) => void;
+  onMapPointClick?: (pointId: number, modifiers: { ctrlKey: boolean; metaKey: boolean }) => void;
   onMapPointPlace?: (latitude: number, longitude: number) => void;
   onMapPointMove?: (pointId: number, latitude: number, longitude: number) => void;
   onSegmentClick?: (segmentId: number) => void;
@@ -68,6 +73,11 @@ export function LeafletMapPane({
   markerNeighbors = [],
   selectedMapPointId = null,
   placementMode = false,
+  linkMode = false,
+  linkChainPointIds = [],
+  linkRouteStartId = null,
+  linkRouteEndId = null,
+  linkRouteViaIds = [],
   showSegments = true,
   showNeighborCoverage = false,
   markerIdsWithNeighborLinks = [],
@@ -292,12 +302,13 @@ export function LeafletMapPane({
       markersLayerRef.current.clearLayers();
 
       for (const point of mapPoints) {
+        const chainIndex = linkChainPointIds.indexOf(point.id);
         const appearanceInput = {
           pointId: point.id,
           selected: selectedMapPointId === point.id,
-          linkMode: false,
-          inChain: false,
-          isLinkHead: false,
+          linkMode,
+          inChain: chainIndex >= 0,
+          isLinkHead: linkChainPointIds.at(-1) === point.id,
           isSuggestion: false,
           showNeighborCoverage,
           markerIdsWithNeighborLinks: neighborLinkSet,
@@ -317,8 +328,17 @@ export function LeafletMapPane({
           halo,
           isDeadEnd: resolveMapPointMarkerIsDeadEnd(appearanceInput),
           isNaturalEndpoint: resolveMapPointMarkerIsNaturalEndpoint(appearanceInput),
-          label: point.ref ?? "",
-          linkMode: false,
+          label:
+            linkRouteStartId === point.id
+              ? "S"
+              : linkRouteEndId === point.id
+                ? "E"
+                : linkRouteViaIds.includes(point.id)
+                  ? "V"
+                  : chainIndex >= 0
+                    ? String(chainIndex + 1)
+                    : (point.ref ?? ""),
+          linkMode,
           markerCursor: pickModifierHeld ? "grab" : "pointer",
         });
 
@@ -336,10 +356,10 @@ export function LeafletMapPane({
 
         marker.on("click", (event) => {
           const LEvent = event as import("leaflet").LeafletMouseEvent;
-          if (isPickModifierEvent(LEvent.originalEvent)) {
-            return;
-          }
-          onMapPointClickRef.current?.(point.id);
+          onMapPointClickRef.current?.(point.id, {
+            ctrlKey: LEvent.originalEvent.ctrlKey,
+            metaKey: LEvent.originalEvent.metaKey,
+          });
         });
 
         marker.on("dragend", () => {
@@ -361,6 +381,11 @@ export function LeafletMapPane({
     mapReady,
     markerIdsWithNeighborLinks,
     naturalEndpointMarkerIds,
+    linkChainPointIds,
+    linkMode,
+    linkRouteEndId,
+    linkRouteStartId,
+    linkRouteViaIds,
     pickModifierHeld,
     selectedMapPointId,
     showNeighborCoverage,

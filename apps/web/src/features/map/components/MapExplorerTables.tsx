@@ -4,11 +4,13 @@ import type { GeoSegmentRecord } from "@/types/map/geo-segments";
 import type { MapPointRecord } from "@/types/map/map-points";
 import type { MapDataExplorerTab } from "@/types/map/maps";
 import type { SegmentEdgeRecord } from "@/types/map/segment-edges";
+import type { ReactNode } from "react";
 
 const TABS: { id: MapDataExplorerTab; label: string }[] = [
   { id: "points", label: "Points" },
   { id: "segments", label: "Segments" },
   { id: "links", label: "Links" },
+  { id: "route", label: "Route" },
   { id: "events", label: "Local events" },
 ];
 
@@ -24,6 +26,7 @@ type MapExplorerTablesProps = {
     createdAt: Date;
     flushed: boolean;
   }>;
+  routePanel?: ReactNode;
 };
 
 function selectRowClass(isSelected: boolean) {
@@ -39,6 +42,7 @@ export function MapExplorerTables({
   segmentEdges,
   pendingEventCount,
   localEvents,
+  routePanel,
 }: MapExplorerTablesProps) {
   const tab = useMapExplorerStore((state) => state.tab);
   const selection = useMapExplorerStore((state) => state.selection);
@@ -167,6 +171,8 @@ export function MapExplorerTables({
             ) : null}
           </div>
         ) : null}
+
+        {tab === "route" ? routePanel : null}
 
         {tab === "events" ? (
           <div className="overflow-x-auto rounded-box border border-base-content/10">
