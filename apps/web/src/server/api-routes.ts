@@ -1,9 +1,29 @@
 import { createAuth } from "@/server/create-auth";
+import { createEvlogFsDrain } from "@/server/evlog-drain";
 import { syncRoutes } from "@/server/sync-routes";
+import { parseError } from "evlog";
+import { createAuthMiddleware } from "evlog/better-auth";
+import { evlog, type EvlogVariables } from "evlog/hono";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-export const apiRoutes = new Hono<{ Bindings: CloudflareBindings }>()
+type ApiBindings = { Bindings: CloudflareBindings } & EvlogVariables;
+
+export const apiRoutes = new Hono<ApiBindings>()
+  .use(
+    "*",
+    evlog({
+      drain: createEvlogFsDrain(),
+      exclude: ["/health", "/_evlog/**"],
+    }),
+  )
+  .use("*", async (c, next) => {
+    const auth = createAuth(c.env);
+    const identify = createAuthMiddleware(auth, { exclude: ["/auth/**", "/_evlog/**"] });
+    await identify(c.get("log"), c.req.raw.headers, c.req.path);
+    await next();
+  })
   .use(
     "*",
     cors({
@@ -32,8 +52,30 @@ export const apiRoutes = new Hono<{ Bindings: CloudflareBindings }>()
       service: "karura-trails",
     }),
   )
-  .route("/sync", syncRoutes);
+  .get("/_evlog/logs", async (c) => {
+    if (!import.meta.env.DEV) {
+      return c.notFound();
+    }
 
-export const honoApp = new Hono<{ Bindings: CloudflareBindings }>().route("/api", apiRoutes);
+    const { readMemoryLogs, parseReadMemoryLogsQuery } = await import("evlog/memory");
+    return c.json(readMemoryLogs(parseReadMemoryLogsQuery(c.req.query())));
+  })
+  .route("/sync", syncRoutes)
+  .onError((error, c) => {
+    c.get("log").error(error);
+    const parsed = parseError(error);
+
+    return c.json(
+      {
+        message: parsed.message,
+        why: parsed.why,
+        fix: parsed.fix,
+        link: parsed.link,
+      },
+      parsed.status as ContentfulStatusCode,
+    );
+  });
+
+export const honoApp = new Hono<ApiBindings>().route("/api", apiRoutes);
 
 export type HonoAppType = typeof honoApp;

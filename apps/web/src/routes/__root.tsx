@@ -7,8 +7,12 @@ import { viewerqueryOptions, type TViewer } from "@/data-access-layer/auth/viewe
 import { AppConfig } from "@/utils/system";
 import type { QueryClient } from "@tanstack/react-query";
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { createMiddleware } from "@tanstack/react-start";
+import { evlogErrorHandler } from "evlog/nitro/v3";
 import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
+
+const evlogMiddleware = createMiddleware().server(evlogErrorHandler);
 
 interface RouterContext {
   queryClient: QueryClient;
@@ -16,6 +20,9 @@ interface RouterContext {
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  server: {
+    middleware: [evlogMiddleware],
+  },
   beforeLoad: async ({ context }) => {
     const viewer = await context.queryClient.ensureQueryData(viewerqueryOptions);
     return { viewer: viewer.data ?? undefined };
