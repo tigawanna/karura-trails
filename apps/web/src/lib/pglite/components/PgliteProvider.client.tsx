@@ -1,4 +1,4 @@
-import { db, initPgliteDb, pgliteClient } from "@/lib/pglite/client.client";
+import { db, initPgliteDb, pgliteClient } from "@/lib/pglite/pglite-instance.client";
 import type { PgliteDb } from "@/lib/pglite/client";
 import type { PGlite } from "@electric-sql/pglite";
 import { createContext, use, type ReactNode } from "react";

@@ -24,7 +24,7 @@ import {
   buildNaturalEndpointMarkerIds,
 } from "@/lib/map/marker-neighbor-coverage";
 import { MAP_POINT_FOCUS_ZOOM, type MapHandle } from "@/lib/map/map-handle";
-import { usePglite } from "@/lib/pglite/components/PgliteProvider";
+import { usePglite } from "@/lib/pglite/components/PgliteProvider.client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, MapPin, RefreshCw, Search, Upload } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";

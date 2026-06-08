@@ -36,6 +36,11 @@ export default defineConfig({
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tailwindcss(),
     tanstackStart({
+      importProtection: {
+        behavior: {
+          build: "mock",
+        },
+      },
       router: {
         routeToken: "layout",
       },
