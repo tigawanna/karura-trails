@@ -15,7 +15,14 @@ export function LandingHero() {
       data-test="landing-hero"
       className="relative mx-auto min-h-dvh max-w-360 border-x border-border/50"
     >
-      <BackgroundRippleEffect rows={10} cols={40} pulse pulseTarget="random" pulseInterval={2600} />
+      <BackgroundRippleEffect
+        rows={10}
+        cols={40}
+        pulse
+        pulseTarget="random"
+        pulseInterval={2600}
+        className="mt-5"
+      />
 
       <div className="relative z-10 border-b border-border/50 px-8 py-16 md:px-16 md:py-24">
         <div className="flex max-w-3xl flex-col gap-8">
@@ -126,7 +133,7 @@ function Stat({ icon: Icon, label, value }: StatProps) {
 
 function TrailMap() {
   return (
-    <div className="relative aspect-[16/9] w-full overflow-hidden border border-border bg-base-200">
+    <div className="relative aspect-video w-full overflow-hidden border border-border bg-base-200">
       <svg
         viewBox="0 0 320 180"
         className="size-full"
