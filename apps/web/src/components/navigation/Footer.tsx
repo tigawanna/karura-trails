@@ -21,6 +21,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/auth" search={{ returnTo: "/dashboard" }} className="link link-hover">
+                  Sign in
+                </Link>
+              </li>
+              <li>
                 <Link to="/dashboard" className="link link-hover">
                   Dashboard
                 </Link>

@@ -3,16 +3,23 @@ import {
   getTanstackQueryContext,
 } from "@/lib/tanstack/query/query-provider";
 import { ThemeProvider } from "@/lib/tanstack/router/theme-provider";
+import { viewerqueryOptions, type TViewer } from "@/data-access-layer/auth/viewer";
 import { AppConfig } from "@/utils/system";
 import type { QueryClient } from "@tanstack/react-query";
 import { HeadContent, Outlet, Scripts, createRootRouteWithContext } from "@tanstack/react-router";
+import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 
 interface RouterContext {
   queryClient: QueryClient;
+  viewer?: TViewer;
 }
 
 export const Route = createRootRouteWithContext<RouterContext>()({
+  beforeLoad: async ({ context }) => {
+    const viewer = await context.queryClient.ensureQueryData(viewerqueryOptions);
+    return { viewer: viewer.data ?? undefined };
+  },
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -41,6 +48,7 @@ function RootDocument() {
         <ThemeProvider storageKey={AppConfig.themeStorageKey}>
           <TanstackQueryProvider queryClient={queryClient}>
             <Outlet />
+            <Toaster />
           </TanstackQueryProvider>
         </ThemeProvider>
         <Scripts />

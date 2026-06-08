@@ -17,6 +17,11 @@ function LandingPage() {
             <Icon className="size-8 text-primary" />
             <span className="text-lg font-semibold">{AppConfig.name}</span>
           </Link>
+          <Button asChild variant="outline">
+            <Link to="/auth" search={{ returnTo: "/dashboard" }}>
+              Sign in
+            </Link>
+          </Button>
           <Button asChild>
             <Link to="/dashboard">{landingContent.dashboardCta || "Dashboard"}</Link>
           </Button>

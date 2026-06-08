@@ -1,3 +1,4 @@
+import { syncApp } from "@/server/sync/sync-app";
 import { Hono } from "hono";
 
 export const apiApp = new Hono()
@@ -8,8 +9,4 @@ export const apiApp = new Hono()
       service: "karura-trails",
     }),
   )
-  .get("/trails", (c) =>
-    c.json({
-      trails: [],
-    }),
-  );
+  .route("/sync", syncApp);
