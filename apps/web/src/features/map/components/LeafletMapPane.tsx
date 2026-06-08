@@ -19,6 +19,7 @@ import type { GeoSegmentRecord } from "@/types/map/geo-segments";
 import type { MapPointRecord } from "@/types/map/map-points";
 import type { MapWorkspaceState } from "@/types/map/maps";
 import type { MarkerNeighborRecord } from "@/types/map/marker-neighbors";
+import type { VirtualPreviewEdge } from "@/lib/map/virtual-graph-preview.types";
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 
@@ -64,6 +65,7 @@ export type LeafletMapPaneProps = {
   onMapPointMove?: (pointId: number, latitude: number, longitude: number) => void;
   onSegmentClick?: (segmentId: number) => void;
   selectedSegmentId?: number | null;
+  virtualPreviewEdges?: VirtualPreviewEdge[];
 };
 
 export function LeafletMapPane({
@@ -90,6 +92,7 @@ export function LeafletMapPane({
   onMapPointMove,
   onSegmentClick,
   selectedSegmentId = null,
+  virtualPreviewEdges = [],
 }: LeafletMapPaneProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
@@ -234,13 +237,30 @@ export function LeafletMapPane({
         polyline.on("click", () => onSegmentClickRef.current?.(segment.id));
         polyline.addTo(segmentsLayerRef.current);
       }
+
+      for (const edge of virtualPreviewEdges) {
+        const coordinates = edge.geometry.coordinates;
+        if (coordinates.length < 2) {
+          continue;
+        }
+        L.polyline(lineStringToLatLngs(coordinates), {
+          color: segmentGroupColor(edge.pathSlug),
+          weight: 5,
+          opacity: 0.82,
+          dashArray: "7 5",
+          lineCap: "round",
+          lineJoin: "round",
+        })
+          .bindTooltip(`${edge.fromRef} → ${edge.toRef}`)
+          .addTo(segmentsLayerRef.current);
+      }
     }
 
     void renderSegments();
     return () => {
       disposed = true;
     };
-  }, [geoSegments, mapReady, selectedSegmentId, showSegments]);
+  }, [geoSegments, mapReady, selectedSegmentId, showSegments, virtualPreviewEdges]);
 
   useEffect(() => {
     if (!mapReady || !neighborLinksLayerRef.current) {

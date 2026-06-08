@@ -10,6 +10,8 @@ type MapExplorerStore = {
   linkChain: number[];
   showNeighborCoverage: boolean;
   showSegments: boolean;
+  graphPreviewOpen: boolean;
+  graphPreviewVisibleSlugs: string[];
   statusMessage: string | null;
   setTab: (tab: MapDataExplorerTab) => void;
   setSelection: (selection: MapDataExplorerSelection | null) => void;
@@ -23,6 +25,10 @@ type MapExplorerStore = {
   clearLinkChain: () => void;
   setShowNeighborCoverage: (value: boolean) => void;
   setShowSegments: (value: boolean) => void;
+  openGraphPreview: (pathSlugs: string[]) => void;
+  closeGraphPreview: () => void;
+  toggleGraphPreviewSlug: (pathSlug: string) => void;
+  setGraphPreviewVisibleSlugs: (pathSlugs: string[]) => void;
   setStatusMessage: (message: string | null) => void;
   reset: () => void;
 };
@@ -36,6 +42,8 @@ const initialState = {
   linkChain: [] as number[],
   showNeighborCoverage: true,
   showSegments: true,
+  graphPreviewOpen: false,
+  graphPreviewVisibleSlugs: [] as string[],
   statusMessage: null as string | null,
 };
 
@@ -71,6 +79,28 @@ export const useMapExplorerStore = create<MapExplorerStore>((set) => ({
   clearLinkChain: () => set({ linkChain: [] }),
   setShowNeighborCoverage: (showNeighborCoverage) => set({ showNeighborCoverage }),
   setShowSegments: (showSegments) => set({ showSegments }),
+  openGraphPreview: (pathSlugs) =>
+    set({
+      graphPreviewOpen: true,
+      graphPreviewVisibleSlugs: [...new Set(pathSlugs)],
+    }),
+  closeGraphPreview: () =>
+    set({
+      graphPreviewOpen: false,
+      graphPreviewVisibleSlugs: [],
+    }),
+  toggleGraphPreviewSlug: (pathSlug) =>
+    set((state) => {
+      const visible = new Set(state.graphPreviewVisibleSlugs);
+      if (visible.has(pathSlug)) {
+        visible.delete(pathSlug);
+      } else {
+        visible.add(pathSlug);
+      }
+      return { graphPreviewVisibleSlugs: [...visible] };
+    }),
+  setGraphPreviewVisibleSlugs: (graphPreviewVisibleSlugs) =>
+    set({ graphPreviewVisibleSlugs: [...new Set(graphPreviewVisibleSlugs)] }),
   setStatusMessage: (statusMessage) => set({ statusMessage }),
   reset: () => set(initialState),
 }));

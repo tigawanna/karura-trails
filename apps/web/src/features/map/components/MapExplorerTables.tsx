@@ -1,6 +1,10 @@
+import { MapLandmarkTypesTable } from "@/features/map/components/MapLandmarkTypesTable";
+import { SegmentBuildFromPathPanel } from "@/features/map/components/SegmentBuildFromPathPanel";
 import { useMapExplorerStore } from "@/features/map/store/map-explorer-store";
+import type { PgliteDb } from "@/lib/pglite/client";
 import { cn } from "@/lib/utils";
 import type { GeoSegmentRecord } from "@/types/map/geo-segments";
+import type { MapLandmarkTypeRecord } from "@/types/map/landmark-types";
 import type { MapPointRecord } from "@/types/map/map-points";
 import type { MapDataExplorerTab } from "@/types/map/maps";
 import type { SegmentEdgeRecord } from "@/types/map/segment-edges";
@@ -8,6 +12,7 @@ import type { ReactNode } from "react";
 
 const TABS: { id: MapDataExplorerTab; label: string }[] = [
   { id: "points", label: "Points" },
+  { id: "landmarks", label: "Landmarks" },
   { id: "segments", label: "Segments" },
   { id: "links", label: "Links" },
   { id: "route", label: "Route" },
@@ -15,9 +20,12 @@ const TABS: { id: MapDataExplorerTab; label: string }[] = [
 ];
 
 type MapExplorerTablesProps = {
+  db: PgliteDb;
+  mapId: number;
   mapPoints: MapPointRecord[];
   geoSegments: GeoSegmentRecord[];
   segmentEdges: SegmentEdgeRecord[];
+  landmarkTypes: MapLandmarkTypeRecord[];
   pendingEventCount: number;
   localEvents: Array<{
     id: string;
@@ -26,6 +34,9 @@ type MapExplorerTablesProps = {
     createdAt: Date;
     flushed: boolean;
   }>;
+  pathSlug: string;
+  onPathSlugChange: (pathSlug: string) => void;
+  onSegmentsBuilt?: () => void;
   routePanel?: ReactNode;
 };
 
@@ -37,11 +48,17 @@ function selectRowClass(isSelected: boolean) {
 }
 
 export function MapExplorerTables({
+  db,
+  mapId,
   mapPoints,
   geoSegments,
   segmentEdges,
+  landmarkTypes,
   pendingEventCount,
   localEvents,
+  pathSlug,
+  onPathSlugChange,
+  onSegmentsBuilt,
   routePanel,
 }: MapExplorerTablesProps) {
   const tab = useMapExplorerStore((state) => state.tab);
@@ -104,37 +121,52 @@ export function MapExplorerTables({
           </div>
         ) : null}
 
+        {tab === "landmarks" ? (
+          <MapLandmarkTypesTable db={db} mapId={mapId} landmarkTypes={landmarkTypes} />
+        ) : null}
+
         {tab === "segments" ? (
-          <div className="overflow-x-auto rounded-box border border-base-content/10">
-            <table className="table-pin-rows table table-sm">
-              <thead>
-                <tr>
-                  <th>Group</th>
-                  <th>Name</th>
-                  <th>Index</th>
-                  <th>Vertices</th>
-                </tr>
-              </thead>
-              <tbody>
-                {geoSegments.map((segment) => (
-                  <tr
-                    key={segment.id}
-                    className={selectRowClass(
-                      selection?.kind === "segment" && selection.id === segment.id,
-                    )}
-                    onClick={() => setSelection({ kind: "segment", id: segment.id })}
-                  >
-                    <td>{segment.segmentGroupId}</td>
-                    <td>{segment.name ?? "—"}</td>
-                    <td>{segment.segmentIndex}</td>
-                    <td>{segment.geometryJson.coordinates.length}</td>
+          <div className="space-y-4">
+            <SegmentBuildFromPathPanel
+              db={db}
+              mapId={mapId}
+              geoSegments={geoSegments}
+              pathSlug={pathSlug}
+              onPathSlugChange={onPathSlugChange}
+              onBuilt={onSegmentsBuilt}
+              showPathSelect
+            />
+            <div className="overflow-x-auto rounded-box border border-base-content/10">
+              <table className="table-pin-rows table table-sm">
+                <thead>
+                  <tr>
+                    <th>Group</th>
+                    <th>Name</th>
+                    <th>Index</th>
+                    <th>Vertices</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            {geoSegments.length === 0 ? (
-              <p className="px-3 py-6 text-sm text-base-content/50">No segments yet.</p>
-            ) : null}
+                </thead>
+                <tbody>
+                  {geoSegments.map((segment) => (
+                    <tr
+                      key={segment.id}
+                      className={selectRowClass(
+                        selection?.kind === "segment" && selection.id === segment.id,
+                      )}
+                      onClick={() => setSelection({ kind: "segment", id: segment.id })}
+                    >
+                      <td>{segment.segmentGroupId}</td>
+                      <td>{segment.name ?? "—"}</td>
+                      <td>{segment.segmentIndex}</td>
+                      <td>{segment.geometryJson.coordinates.length}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {geoSegments.length === 0 ? (
+                <p className="px-3 py-6 text-sm text-base-content/50">No segments yet.</p>
+              ) : null}
+            </div>
           </div>
         ) : null}
 

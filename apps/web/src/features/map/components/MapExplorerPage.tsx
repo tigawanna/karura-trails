@@ -2,7 +2,9 @@ import {
   geoSegmentsQueryOptions,
   seedTrailsMutationOptions,
 } from "@/data-access-layer/pglite/geo-segments";
+import { importMapBootstrap } from "@/data-access-layer/pglite/import-bootstrap";
 import { listLocalEvents } from "@/data-access-layer/pglite/local-events";
+import { mapLandmarkTypesQueryOptions } from "@/data-access-layer/pglite/map-landmark-types";
 import {
   createMapPointMutationOptions,
   deleteMapPointMutationOptions,
@@ -20,8 +22,12 @@ import {
   segmentEdgesQueryOptions,
 } from "@/data-access-layer/pglite/segment-edges";
 import { trailsQueryOptions } from "@/data-access-layer/pglite/trails";
+import { MapGraphPreviewPanel } from "@/features/map/components/MapGraphPreviewPanel";
 import { MapLinkComposerPanel } from "@/features/map/components/MapLinkComposerPanel";
 import { useLinkRoutePlanner } from "@/features/map/hooks/useLinkRoutePlanner";
+import { useVirtualGraphPreview } from "@/features/map/hooks/useVirtualGraphPreview";
+import { groupSegmentsByPath } from "@/lib/map/group-segments-by-path";
+import { flattenVirtualPreviewEdges } from "@/lib/map/virtual-graph-preview.types";
 import { isPickModifierEvent } from "@/lib/map/pick-modifier";
 import { MapExplorerDetailsPanel } from "@/features/map/components/MapExplorerDetailsPanel";
 import { MapExplorerTables } from "@/features/map/components/MapExplorerTables";
@@ -40,8 +46,17 @@ import {
 import { MAP_POINT_FOCUS_ZOOM, type MapHandle } from "@/lib/map/map-handle";
 import { usePglite } from "@/lib/pglite/components/PgliteProvider.client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Database, Download, Link2, MapPin, RefreshCw, Search, Upload } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Database,
+  Download,
+  Link2,
+  MapPin,
+  Network,
+  RefreshCw,
+  Search,
+  Upload,
+} from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Group, Panel, Separator } from "react-resizable-panels";
 
@@ -53,6 +68,7 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const { db } = usePglite();
   const queryClient = useQueryClient();
   const mapHandleRef = useRef<MapHandle | null>(null);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
   const [locationQuery, setLocationQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
   const [pathSlug, setPathSlug] = useState("manual-segments");
@@ -75,6 +91,10 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const removeLinkChainPointAt = useMapExplorerStore((state) => state.removeLinkChainPointAt);
   const clearLinkChain = useMapExplorerStore((state) => state.clearLinkChain);
   const setStatusMessage = useMapExplorerStore((state) => state.setStatusMessage);
+  const graphPreviewOpen = useMapExplorerStore((state) => state.graphPreviewOpen);
+  const graphPreviewVisibleSlugs = useMapExplorerStore((state) => state.graphPreviewVisibleSlugs);
+  const openGraphPreview = useMapExplorerStore((state) => state.openGraphPreview);
+  const closeGraphPreview = useMapExplorerStore((state) => state.closeGraphPreview);
   const reset = useMapExplorerStore((state) => state.reset);
 
   useEffect(() => {
@@ -86,6 +106,7 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const geoSegmentsQueryResult = useQuery(geoSegmentsQueryOptions(db, mapId));
   const markerNeighborsQuery = useQuery(markerNeighborsQueryOptions(db, mapId));
   const segmentEdgesQuery = useQuery(segmentEdgesQueryOptions(db, mapId));
+  const landmarkTypesQuery = useQuery(mapLandmarkTypesQueryOptions(db, mapId));
   const trailsQuery = useQuery(trailsQueryOptions(db, mapId));
   const localEventsQuery = useQuery({
     queryKey: pgliteQueryKeys.localEvents(),
@@ -184,6 +205,19 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
     },
   });
 
+  const importMutation = useMutation({
+    mutationFn: (payload: unknown) => importMapBootstrap(db, mapId, payload),
+    onSuccess: async (result) => {
+      await queryClient.invalidateQueries({ queryKey: ["pglite"] });
+      toast.success(
+        `Imported ${result.mapPointsCreated} point(s), ${result.markerNeighborsCreated} neighbor(s), ${result.geoSegmentsCreated} segment(s), ${result.segmentEdgesCreated + result.segmentEdgesUpdated} edge(s).`,
+      );
+    },
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to import bootstrap.");
+    },
+  });
+
   const createChainMutation = useMutation({
     ...createSegmentEdgeChainMutationOptions(db, mapId),
     onSuccess: async (result) => {
@@ -202,7 +236,29 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const geoSegments = geoSegmentsQueryResult.data ?? [];
   const markerNeighbors = markerNeighborsQuery.data ?? [];
   const segmentEdges = segmentEdgesQuery.data ?? [];
+  const landmarkTypes = landmarkTypesQuery.data ?? [];
   const trails = trailsQuery.data ?? [];
+  const pathGroups = useMemo(() => groupSegmentsByPath(geoSegments), [geoSegments]);
+  const pathSlugs = useMemo(() => pathGroups.map((group) => group.groupId), [pathGroups]);
+
+  const {
+    previews: graphPreviews,
+    loading: graphPreviewLoading,
+    error: graphPreviewError,
+    reload: reloadGraphPreview,
+  } = useVirtualGraphPreview(db, mapId, pathSlugs, graphPreviewOpen);
+
+  const virtualPreviewEdges = graphPreviewOpen
+    ? flattenVirtualPreviewEdges(graphPreviews, new Set(graphPreviewVisibleSlugs))
+    : [];
+
+  const handleToggleGraphPreview = useCallback(() => {
+    if (graphPreviewOpen) {
+      closeGraphPreview();
+      return;
+    }
+    openGraphPreview(pathSlugs);
+  }, [closeGraphPreview, graphPreviewOpen, openGraphPreview, pathSlugs]);
   const localEvents = localEventsQuery.data ?? [];
   const pendingEventCount = localEvents.filter((event) => !event.flushed).length;
 
@@ -256,6 +312,28 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
     if (result.error) {
       toast.error(result.error);
     }
+  }
+
+  function handleImportFileChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        if (typeof reader.result !== "string") {
+          toast.error("Invalid JSON file.");
+          return;
+        }
+        const payload = JSON.parse(reader.result) as unknown;
+        importMutation.mutate(payload);
+      } catch {
+        toast.error("Invalid JSON file.");
+      }
+    };
+    reader.readAsText(file);
   }
 
   function handleExport() {
@@ -368,6 +446,16 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
             </button>
             <button
               type="button"
+              className={graphPreviewOpen ? "btn btn-sm btn-secondary" : "btn btn-outline btn-sm"}
+              onClick={handleToggleGraphPreview}
+              disabled={pathSlugs.length === 0}
+              data-test="graph-preview-toggle"
+            >
+              <Network className="size-3.5" />
+              Graph preview
+            </button>
+            <button
+              type="button"
               className="btn btn-outline btn-sm"
               onClick={() => flushMutation.mutate()}
               disabled={flushMutation.isPending || pendingEventCount === 0}
@@ -389,6 +477,22 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
             </button>
             <button
               type="button"
+              className="btn btn-outline btn-sm"
+              disabled={importMutation.isPending}
+              onClick={() => importInputRef.current?.click()}
+            >
+              <Upload className="size-3.5" />
+              Import JSON
+            </button>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={handleImportFileChange}
+            />
+            <button
+              type="button"
               className="btn btn-ghost btn-sm"
               onClick={() => {
                 void queryClient.invalidateQueries({ queryKey: ["pglite"] });
@@ -406,11 +510,22 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
       >
         <Panel defaultSize={34} minSize={24}>
           <MapExplorerTables
+            db={db}
+            mapId={mapId}
             mapPoints={mapPoints}
             geoSegments={geoSegments}
             segmentEdges={segmentEdges}
+            landmarkTypes={landmarkTypes}
             pendingEventCount={pendingEventCount}
             localEvents={localEvents}
+            pathSlug={pathSlug}
+            onPathSlugChange={setPathSlug}
+            onSegmentsBuilt={async () => {
+              await queryClient.invalidateQueries({
+                queryKey: pgliteQueryKeys.segmentEdges(mapId),
+              });
+              await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.localEvents() });
+            }}
             routePanel={
               <MapLinkComposerPanel
                 mapPoints={mapPoints}
@@ -429,75 +544,99 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
         </Panel>
         <Separator className="w-1 bg-base-content/10" />
         <Panel defaultSize={66} minSize={36}>
-          <Group orientation="vertical">
-            <Panel defaultSize={62} minSize={35}>
-              <LeafletMapPane
-                workspace={workspace}
-                geoSegments={geoSegments}
-                mapPoints={mapPoints}
-                markerNeighbors={markerNeighbors}
-                selectedMapPointId={selectedMapPointId}
-                selectedSegmentId={selectedSegmentId}
-                placementMode={placementMode}
-                linkMode={linkMode || routePlanner.pickTarget != null}
-                linkChainPointIds={linkChain}
-                linkRouteStartId={routePlanner.startId}
-                linkRouteEndId={routePlanner.endId}
-                linkRouteViaIds={routePlanner.viaIds}
-                showSegments={showSegments}
-                showNeighborCoverage={showNeighborCoverage}
-                markerIdsWithNeighborLinks={markerIdsWithNeighborLinks}
-                deadEndMarkerIds={deadEndMarkerIds}
-                naturalEndpointMarkerIds={naturalEndpointMarkerIds}
-                onReady={(handle) => {
-                  mapHandleRef.current = handle;
-                }}
-                onViewportChange={(viewport) => {
-                  void updateMapWorkspace(db, mapId, {
-                    mapCenterLat: viewport.latitude,
-                    mapCenterLng: viewport.longitude,
-                    mapZoom: viewport.zoom,
-                  });
-                }}
-                onMapPointClick={(pointId, modifiers) => {
-                  if (routePlanner.handleMapPointClickForRoutePick(pointId)) {
-                    return;
-                  }
-                  if (linkMode && isPickModifierEvent(modifiers)) {
-                    appendLinkChainPoint(pointId);
-                    return;
-                  }
-                  setSelection({ kind: "map-point", id: pointId });
-                }}
-                onMapPointPlace={(latitude, longitude) => {
-                  createPointMutation.mutate({ latitude, longitude, category: "custom" });
-                }}
-                onMapPointMove={(pointId, latitude, longitude) => {
-                  updatePointMutation.mutate({ pointId, latitude, longitude });
-                }}
-                onSegmentClick={(segmentId) => {
-                  setSelection({ kind: "segment", id: segmentId });
-                }}
-              />
-            </Panel>
-            <Separator className="h-1 bg-base-content/10" />
-            <Panel defaultSize={38} minSize={20}>
-              <div className="h-full overflow-auto border-t border-base-content/10 bg-base-100/70">
-                <MapExplorerDetailsPanel
-                  selection={selection}
-                  mapPoints={mapPoints}
-                  markerNeighbors={markerNeighbors}
-                  geoSegments={geoSegments}
-                  segmentEdges={segmentEdges}
-                  isSavingNeighbors={replaceNeighborsMutation.isPending}
-                  onEditPoint={(pointId) => setEditPointId(pointId)}
-                  onReplaceNeighbors={(pointId, toMarkerIds) =>
-                    replaceNeighborsMutation.mutate({ fromMarkerId: pointId, toMarkerIds })
-                  }
+          <div className="relative h-full min-h-0">
+            <Group orientation="vertical" className="h-full">
+              <Panel defaultSize={62} minSize={35}>
+                <div className="relative h-full">
+                  <LeafletMapPane
+                    workspace={workspace}
+                    geoSegments={geoSegments}
+                    mapPoints={mapPoints}
+                    markerNeighbors={markerNeighbors}
+                    selectedMapPointId={selectedMapPointId}
+                    selectedSegmentId={selectedSegmentId}
+                    placementMode={placementMode}
+                    linkMode={linkMode || routePlanner.pickTarget != null}
+                    linkChainPointIds={linkChain}
+                    linkRouteStartId={routePlanner.startId}
+                    linkRouteEndId={routePlanner.endId}
+                    linkRouteViaIds={routePlanner.viaIds}
+                    showSegments={showSegments}
+                    showNeighborCoverage={showNeighborCoverage}
+                    virtualPreviewEdges={virtualPreviewEdges}
+                    markerIdsWithNeighborLinks={markerIdsWithNeighborLinks}
+                    deadEndMarkerIds={deadEndMarkerIds}
+                    naturalEndpointMarkerIds={naturalEndpointMarkerIds}
+                    onReady={(handle) => {
+                      mapHandleRef.current = handle;
+                    }}
+                    onViewportChange={(viewport) => {
+                      void updateMapWorkspace(db, mapId, {
+                        mapCenterLat: viewport.latitude,
+                        mapCenterLng: viewport.longitude,
+                        mapZoom: viewport.zoom,
+                      });
+                    }}
+                    onMapPointClick={(pointId, modifiers) => {
+                      if (routePlanner.handleMapPointClickForRoutePick(pointId)) {
+                        return;
+                      }
+                      if (linkMode && isPickModifierEvent(modifiers)) {
+                        appendLinkChainPoint(pointId);
+                        return;
+                      }
+                      setSelection({ kind: "map-point", id: pointId });
+                    }}
+                    onMapPointPlace={(latitude, longitude) => {
+                      createPointMutation.mutate({ latitude, longitude, category: "custom" });
+                    }}
+                    onMapPointMove={(pointId, latitude, longitude) => {
+                      updatePointMutation.mutate({ pointId, latitude, longitude });
+                    }}
+                    onSegmentClick={(segmentId) => {
+                      setSelection({ kind: "segment", id: segmentId });
+                    }}
+                  />
+                  {graphPreviewOpen ? (
+                    <div
+                      className={`pointer-events-none absolute left-3 z-[1000] max-w-[18rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm ${showNeighborCoverage ? "bottom-12" : "bottom-3"}`}
+                    >
+                      Dashed lines are virtual graph preview edges (not saved).
+                    </div>
+                  ) : null}
+                </div>
+              </Panel>
+              <Separator className="h-1 bg-base-content/10" />
+              <Panel defaultSize={38} minSize={20}>
+                <div className="h-full overflow-auto border-t border-base-content/10 bg-base-100/70">
+                  <MapExplorerDetailsPanel
+                    selection={selection}
+                    mapPoints={mapPoints}
+                    markerNeighbors={markerNeighbors}
+                    geoSegments={geoSegments}
+                    segmentEdges={segmentEdges}
+                    isSavingNeighbors={replaceNeighborsMutation.isPending}
+                    onEditPoint={(pointId) => setEditPointId(pointId)}
+                    onReplaceNeighbors={(pointId, toMarkerIds) =>
+                      replaceNeighborsMutation.mutate({ fromMarkerId: pointId, toMarkerIds })
+                    }
+                  />
+                </div>
+              </Panel>
+            </Group>
+            {graphPreviewOpen ? (
+              <div className="absolute inset-y-0 right-0 z-[1150] w-96 shadow-xl">
+                <MapGraphPreviewPanel
+                  pathGroups={pathGroups}
+                  previews={graphPreviews}
+                  loading={graphPreviewLoading}
+                  error={graphPreviewError}
+                  onReload={reloadGraphPreview}
+                  onClose={closeGraphPreview}
                 />
               </div>
-            </Panel>
-          </Group>
+            ) : null}
+          </div>
         </Panel>
       </Group>
 

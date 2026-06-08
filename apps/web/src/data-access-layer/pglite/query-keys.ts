@@ -5,6 +5,9 @@ export const pgliteQueryKeys = {
   markerNeighbors: (mapId: number) => ["pglite", "markerNeighbors", mapId] as const,
   segmentEdges: (mapId: number) => ["pglite", "segmentEdges", mapId] as const,
   trails: (mapId: number) => ["pglite", "trails", mapId] as const,
+  landmarkTypes: (mapId: number) => ["pglite", "landmarkTypes", mapId] as const,
+  segmentBuildPreview: (mapId: number, pathSlug: string) =>
+    ["pglite", "segmentBuildPreview", mapId, pathSlug] as const,
   localEvents: () => ["pglite", "localEvents"] as const,
   karuraMapId: () => ["pglite", "karuraMapId"] as const,
 };
