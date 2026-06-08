@@ -1,7 +1,6 @@
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/drizzle/client";
+import { createAuth } from "@/server/create-auth";
+import { createDb } from "@/db/d1";
 import { syncEvents } from "@/lib/drizzle/schema/sync-events-schema";
-import { serverEnv } from "@/lib/server-env";
 import type {
   SyncEventPayload,
   SyncEventRecord,
@@ -51,28 +50,18 @@ function normalizeIncomingEvent(event: SyncEventPayload, deviceId: string) {
   };
 }
 
-async function authorizeSyncPush(request: Request): Promise<boolean> {
-  if (serverEnv.SYNC_API_SECRET) {
-    const headerSecret = request.headers.get("x-sync-secret");
-    if (headerSecret === serverEnv.SYNC_API_SECRET) {
-      return true;
-    }
-  }
-
-  const session = await auth.api.getSession({ headers: request.headers });
-  return Boolean(session?.user);
-}
-
-async function authorizeAdmin(request: Request): Promise<boolean> {
-  const session = await auth.api.getSession({ headers: request.headers });
-  return session?.user?.role === "admin";
-}
-
-export const syncApp = new Hono()
+export const syncRoutes = new Hono<{ Bindings: CloudflareBindings }>()
   .post("/events", async (c) => {
-    const authorized = await authorizeSyncPush(c.req.raw);
-    if (!authorized) {
-      return c.json({ error: "Unauthorized" }, 401);
+    const auth = createAuth(c.env);
+    const syncSecret = c.env.SYNC_API_SECRET;
+    const headerSecret = c.req.header("x-sync-secret");
+    const hasSyncSecret = Boolean(syncSecret && headerSecret === syncSecret);
+
+    if (!hasSyncSecret) {
+      const session = await auth.api.getSession({ headers: c.req.raw.headers });
+      if (!session?.user) {
+        return c.json({ error: "Unauthorized" }, 401);
+      }
     }
 
     const body: unknown = await c.req.json();
@@ -80,6 +69,7 @@ export const syncApp = new Hono()
       return c.json({ error: "Invalid payload" }, 400);
     }
 
+    const db = createDb(c.env.DB);
     const batch = body.events.slice(0, PUSH_BATCH_LIMIT);
     let accepted = 0;
     let lastAcceptedId: string | null = null;
@@ -100,10 +90,12 @@ export const syncApp = new Hono()
     return c.json(response);
   })
   .get("/events", async (c) => {
+    const auth = createAuth(c.env);
     const after = c.req.query("after");
     const limit = Math.min(Number(c.req.query("limit") ?? PULL_BATCH_LIMIT), PULL_BATCH_LIMIT);
     const includeUnverified = c.req.query("includeUnverified") === "true";
-    const isAdmin = await authorizeAdmin(c.req.raw);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    const isAdmin = session?.user?.role === "admin";
 
     const conditions = [];
     if (after) {
@@ -113,6 +105,7 @@ export const syncApp = new Hono()
       conditions.push(eq(syncEvents.verified, true));
     }
 
+    const db = createDb(c.env.DB);
     const rows = await db
       .select()
       .from(syncEvents)
@@ -133,21 +126,22 @@ export const syncApp = new Hono()
     return c.json(response);
   })
   .patch("/events/:id/verify", async (c) => {
-    const isAdmin = await authorizeAdmin(c.req.raw);
-    if (!isAdmin) {
+    const auth = createAuth(c.env);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (session?.user?.role !== "admin") {
       return c.json({ error: "Forbidden" }, 403);
     }
 
-    const session = await auth.api.getSession({ headers: c.req.raw.headers });
     const eventId = c.req.param("id");
     const verifiedAt = new Date().toISOString();
+    const db = createDb(c.env.DB);
 
     await db
       .update(syncEvents)
       .set({
         verified: true,
         verifiedAt,
-        verifiedBy: session?.user.id ?? null,
+        verifiedBy: session.user.id,
       })
       .where(eq(syncEvents.id, eventId));
 

@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "karura-trails-web",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/server.tsx",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "karura-trails-db",
+      "database_id": "00000000-0000-0000-0000-000000000002",
+      "migrations_dir": "drizzle",
+    },
+  ],
+}

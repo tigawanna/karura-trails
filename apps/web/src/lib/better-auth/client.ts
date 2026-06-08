@@ -4,6 +4,7 @@ import { clientEnv } from "../client-env";
 
 export const authClient = createAuthClient({
   baseURL: clientEnv.VITE_API_URL,
+  basePath: "/api/auth",
   plugins: [adminClient()],
 });
 

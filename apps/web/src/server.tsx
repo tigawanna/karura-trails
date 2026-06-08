@@ -1,4 +1,5 @@
 import handler, { createServerEntry } from "@tanstack/react-start/server-entry";
+import { honoApp } from "@/server/api-routes";
 
 type RequestContext = {
   isServer: true;
@@ -12,8 +13,22 @@ declare module "@tanstack/react-start" {
   }
 }
 
-export default createServerEntry({
-  async fetch(request) {
+type CloudflareServerEntry = {
+  fetch: (
+    request: Request,
+    env: CloudflareBindings,
+    ctx: ExecutionContext,
+  ) => Promise<Response> | Response;
+};
+
+const serverEntry: CloudflareServerEntry = {
+  async fetch(request, env, ctx) {
+    if (new URL(request.url).pathname.startsWith("/api")) {
+      return honoApp.fetch(request, env, ctx);
+    }
+
     return handler.fetch(request, { context: { isServer: true } });
   },
-});
+};
+
+export default createServerEntry(serverEntry as unknown as Parameters<typeof createServerEntry>[0]);

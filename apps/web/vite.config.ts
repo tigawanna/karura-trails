@@ -1,14 +1,19 @@
+import { cloudflare } from "@cloudflare/vite-plugin";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "url";
-import { nitro } from "nitro/vite";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
   staged: { "*": "vp check --fix" },
   server: {
     host: "::",
+  },
+  ssr: {
+    optimizeDeps: {
+      exclude: ["better-auth"],
+    },
   },
   resolve: {
     alias: {
@@ -17,7 +22,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
-    nitro(),
+    cloudflare({ viteEnvironment: { name: "ssr" } }),
     tailwindcss(),
     tanstackStart({
       router: {
