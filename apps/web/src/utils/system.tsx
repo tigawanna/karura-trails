@@ -1,4 +1,4 @@
-import { Trees } from "lucide-react";
+import { SiteIcon } from "@/components/icon/SiteIcon";
 
 export const AppConfig = {
   name: "Karura Trails",
@@ -10,5 +10,5 @@ export const AppConfig = {
     github: "",
     mail: "",
   },
-  icon: Trees,
+  icon: SiteIcon,
 };
