@@ -1,5 +1,9 @@
 import { buildMarkerRenamePlan } from "@/lib/map/marker-rename-planner";
 import {
+  buildPhysicalMarkerSpurReport,
+  formatPhysicalMarkerSpurReportText,
+} from "@/lib/map/physical-marker-spur-report";
+import {
   parseVirtualRef,
   resolveMapPointLabel,
   resolveMarkerKind,
@@ -47,11 +51,25 @@ export function buildMarkerRenameInventory(input: {
       markerNeighbors: input.markerNeighbors,
     }).proposals;
 
+  const spurReport = buildPhysicalMarkerSpurReport({
+    mapId: input.mapId,
+    mapPoints: input.mapPoints,
+    markerNeighbors: input.markerNeighbors,
+  });
+
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
     mapId: input.mapId,
     mapName: input.mapName,
+    physicalMarkerSpurs: spurReport.legs.map((leg) => ({
+      anchorId: leg.anchorId,
+      anchorLabel: leg.anchorLabel,
+      towardId: leg.towardId,
+      towardLabel: leg.towardLabel,
+      markerLabelsCsv: leg.markerLabelsCsv,
+    })),
+    spurReportText: formatPhysicalMarkerSpurReportText(spurReport),
     markers: input.mapPoints.map((point) => ({
       id: point.id,
       ref: point.ref,
@@ -134,6 +152,16 @@ export function downloadMarkerRenameInventory(
   payload: MarkerRenameInventoryExport,
 ) {
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+export function downloadSpurReportText(filename: string, text: string) {
+  const blob = new Blob([text], { type: "text/plain" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;

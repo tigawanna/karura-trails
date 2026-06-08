@@ -3,18 +3,24 @@ import { pgliteQueryKeys } from "@/data-access-layer/pglite/query-keys";
 import {
   buildMarkerRenameInventory,
   downloadMarkerRenameInventory,
+  downloadSpurReportText,
   parseMarkerRenameInventory,
   proposalsFromInventory,
 } from "@/features/map/lib/marker-rename-inventory";
 import { useMapExplorerStore } from "@/features/map/store/map-explorer-store";
 import { buildMarkerRenamePlan } from "@/lib/map/marker-rename-planner";
+import {
+  buildPhysicalMarkerSpurReport,
+  formatPhysicalMarkerSpurReportText,
+  type PhysicalMarkerSpurReport,
+} from "@/lib/map/physical-marker-spur-report";
 import { cn } from "@/lib/utils";
 import type { PgliteDb } from "@/lib/pglite/client";
 import type { MarkerRenameProposal } from "@/types/map/marker-rename";
 import type { MapPointRecord } from "@/types/map/map-points";
 import type { MarkerNeighborRecord } from "@/types/map/marker-neighbors";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Download, RefreshCw, Upload } from "lucide-react";
+import { ClipboardCopy, Download, ListTree, RefreshCw, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -50,6 +56,7 @@ export function MapMarkerRenamePanel({
     proposalCount: number;
     unchangedCount: number;
   } | null>(null);
+  const [spurReport, setSpurReport] = useState<PhysicalMarkerSpurReport | null>(null);
 
   const applyMutation = useMutation({
     ...applyMarkerRenamesMutationOptions(db, mapId),
@@ -69,6 +76,39 @@ export function MapMarkerRenamePanel({
   });
 
   const approvedCount = useMemo(() => rows.filter((row) => row.approved).length, [rows]);
+
+  function handleBuildSpurReport() {
+    const report = buildPhysicalMarkerSpurReport({
+      mapId,
+      mapPoints,
+      markerNeighbors,
+    });
+    setSpurReport(report);
+    if (report.physicalMarkers.length === 0) {
+      toast.message(
+        "No physical guidepost markers found. Mark junctions/gates as physical refs first.",
+      );
+    }
+  }
+
+  async function handleCopySpurReport() {
+    if (!spurReport) {
+      return;
+    }
+    const text = formatPhysicalMarkerSpurReportText(spurReport);
+    await navigator.clipboard.writeText(text);
+    toast.success("Spur report copied. Paste it into chat for rename help.");
+  }
+
+  function handleExportSpurReport() {
+    if (!spurReport) {
+      return;
+    }
+    downloadSpurReportText(
+      `karura-spur-report-${mapId}.txt`,
+      formatPhysicalMarkerSpurReportText(spurReport),
+    );
+  }
 
   function handleAnalyze() {
     const plan = buildMarkerRenamePlan({
@@ -169,10 +209,54 @@ export function MapMarkerRenamePanel({
       <div className="space-y-1">
         <p className="text-sm font-semibold">Marker rename review</p>
         <p className="text-xs text-base-content/60">
-          Analyze inconsistent virtual labels (e.g. 21.a1, 21.1, 21.a1-bench), review proposed
-          anchor.N refs and cleaner display names, then apply approved changes.
+          Start with <strong>Build spur map</strong> to list every physical guidepost and the
+          comma-separated markers on each leg until the next physical marker. Export or copy that
+          report and paste it here in chat — then use <strong>Analyze naming</strong> to generate
+          rename proposals you can approve and apply.
         </p>
       </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn btn-sm btn-accent"
+          onClick={handleBuildSpurReport}
+          data-test="marker-spur-report-build"
+        >
+          <ListTree className="size-3.5" />
+          Build spur map
+        </button>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          disabled={!spurReport}
+          onClick={() => void handleCopySpurReport()}
+        >
+          <ClipboardCopy className="size-3.5" />
+          Copy spur report
+        </button>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          disabled={!spurReport}
+          onClick={handleExportSpurReport}
+        >
+          <Download className="size-3.5" />
+          Export spur .txt
+        </button>
+      </div>
+
+      {spurReport ? (
+        <div className="space-y-2 rounded-box border border-base-content/10 bg-base-200/30 p-3">
+          <p className="text-xs font-medium text-base-content/70">
+            Physical markers ({spurReport.physicalMarkers.length}):{" "}
+            {spurReport.physicalMarkers.map((entry) => entry.label).join(", ") || "(none)"}
+          </p>
+          <pre className="max-h-64 overflow-auto font-mono text-[11px] whitespace-pre-wrap text-base-content/80">
+            {formatPhysicalMarkerSpurReportText(spurReport)}
+          </pre>
+        </div>
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <button type="button" className="btn btn-sm btn-primary" onClick={handleAnalyze}>
@@ -303,8 +387,8 @@ export function MapMarkerRenamePanel({
         </>
       ) : (
         <p className="text-sm text-base-content/50">
-          Run analyze to generate rename proposals, or export the inventory JSON to share full
-          marker context for external review.
+          Build the spur map first, then analyze naming or export inventory JSON for AI-assisted
+          rename review.
         </p>
       )}
     </div>

@@ -26,7 +26,9 @@ import { trailsQueryOptions } from "@/data-access-layer/pglite/trails";
 import { MapGraphPreviewPanel } from "@/features/map/components/MapGraphPreviewPanel";
 import { MapLinkComposerPanel } from "@/features/map/components/MapLinkComposerPanel";
 import { useLinkRoutePlanner } from "@/features/map/hooks/useLinkRoutePlanner";
+import { useMapExplorerHotkeys } from "@/features/map/hooks/useMapExplorerHotkeys";
 import { useVirtualGraphPreview } from "@/features/map/hooks/useVirtualGraphPreview";
+import { useKeyboardShortcutsStore } from "@/features/map/shortcuts/keyboard-shortcuts-store";
 import { groupSegmentsByPath } from "@/lib/map/group-segments-by-path";
 import { flattenVirtualPreviewEdges } from "@/lib/map/virtual-graph-preview.types";
 import { isPickModifierEvent } from "@/lib/map/pick-modifier";
@@ -58,6 +60,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Database,
   Download,
+  HelpCircle,
   Link2,
   MapPin,
   Network,
@@ -298,6 +301,72 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const editingPoint =
     editPointId != null ? (mapPoints.find((point) => point.id === editPointId) ?? null) : null;
 
+  const openShortcuts = useKeyboardShortcutsStore((state) => state.setOpen);
+
+  const handleHotkeyDismiss = useCallback(() => {
+    if (captureDraft) {
+      setCaptureDraft(null);
+      return;
+    }
+    if (editPointId != null) {
+      setEditPointId(null);
+      return;
+    }
+    if (graphPreviewOpen) {
+      closeGraphPreview();
+      return;
+    }
+    if (placementMode) {
+      setPlacementMode(false);
+      return;
+    }
+    if (linkMode) {
+      setLinkMode(false);
+    }
+  }, [
+    captureDraft,
+    closeGraphPreview,
+    editPointId,
+    graphPreviewOpen,
+    linkMode,
+    placementMode,
+    setEditPointId,
+    setLinkMode,
+    setPlacementMode,
+  ]);
+
+  useMapExplorerHotkeys({
+    enabled: Boolean(workspace),
+    hasCaptureDraft: captureDraft != null,
+    hasEditDialog: editPointId != null,
+    graphPreviewOpen,
+    placementMode,
+    linkMode,
+    selectedMapPointId,
+    pathSlugs,
+    onToggleNeighborCoverage: () => setShowNeighborCoverage(!showNeighborCoverage),
+    onToggleSegments: () => setShowSegments(!showSegments),
+    onTogglePlacementMode: () => {
+      setPlacementMode(!placementMode);
+      if (!placementMode) {
+        setLinkMode(false);
+      }
+    },
+    onToggleLinkMode: () => {
+      setLinkMode(!linkMode);
+      if (!linkMode) {
+        setPlacementMode(false);
+      }
+    },
+    onToggleGraphPreview: handleToggleGraphPreview,
+    onOpenMarkerEditor: () => {
+      if (selectedMapPointId != null) {
+        setEditPointId(selectedMapPointId);
+      }
+    },
+    onDismiss: handleHotkeyDismiss,
+  });
+
   useEffect(() => {
     if (!selection || selection.kind !== "map-point" || !mapHandleRef.current) {
       return;
@@ -511,7 +580,7 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
             <button
               type="button"
               className={graphPreviewOpen ? "btn btn-sm btn-secondary" : "btn btn-outline btn-sm"}
-              onClick={handleToggleGraphPreview}
+              onClick={() => handleToggleGraphPreview()}
               disabled={pathSlugs.length === 0}
               data-test="graph-preview-toggle"
             >
@@ -555,6 +624,15 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
               className="hidden"
               onChange={handleImportFileChange}
             />
+            <button
+              type="button"
+              className="btn btn-ghost btn-sm"
+              onClick={() => openShortcuts(true)}
+              title="Keyboard shortcuts (Shift+?)"
+              data-test="keyboard-shortcuts-open"
+            >
+              <HelpCircle className="size-3.5" />
+            </button>
             <button
               type="button"
               className="btn btn-ghost btn-sm"

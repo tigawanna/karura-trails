@@ -1,4 +1,5 @@
 import { ensureKaruraMap } from "@/data-access-layer/pglite/seed";
+import { KeyboardShortcutsProvider } from "@/features/map/components/KeyboardShortcutsProvider";
 import { MapExplorerPage } from "@/features/map/components/MapExplorerPage";
 import { PgliteProvider, usePglite } from "@/lib/pglite/components/PgliteProvider.client";
 import { useEffect, useState } from "react";
@@ -47,5 +48,9 @@ function MapShellContent() {
     return <MainLoader />;
   }
 
-  return <MapExplorerPage mapId={mapId} />;
+  return (
+    <KeyboardShortcutsProvider>
+      <MapExplorerPage mapId={mapId} />
+    </KeyboardShortcutsProvider>
+  );
 }

@@ -37,11 +37,21 @@ export type MarkerRenameInventoryEntry = {
   neighborLabels: string[];
 };
 
+export type PhysicalAnchorSpurLegExport = {
+  anchorId: number;
+  anchorLabel: string;
+  towardId: number | null;
+  towardLabel: string | null;
+  markerLabelsCsv: string;
+};
+
 export type MarkerRenameInventoryExport = {
   version: 1;
   exportedAt: string;
   mapId: number;
   mapName: string;
+  physicalMarkerSpurs?: PhysicalAnchorSpurLegExport[];
+  spurReportText?: string;
   markers: MarkerRenameInventoryEntry[];
   proposals: Array<{
     pointId: number;
