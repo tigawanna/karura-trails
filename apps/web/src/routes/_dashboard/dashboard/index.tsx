@@ -17,11 +17,14 @@ function DashboardPage() {
             verified data for mobile and web map clients.
           </p>
         </div>
-        <div
-          className="flex h-[min(60vh,520px)] w-full items-center justify-center rounded-2xl border border-dashed border-base-300 bg-base-200/50 text-sm text-base-content/50"
-          data-test="map-placeholder"
-        >
-          Map canvas — transplant coming in a follow-up session
+        <div className="rounded-2xl border border-base-content/10 bg-base-100/70 p-6">
+          <p className="text-sm text-base-content/70">
+            Open the map workspace to view and edit Karura trail markers, segments, and routing
+            data.
+          </p>
+          <a href="/map" className="btn mt-4 btn-sm btn-primary">
+            Open map workspace
+          </a>
         </div>
       </section>
     </Suspense>

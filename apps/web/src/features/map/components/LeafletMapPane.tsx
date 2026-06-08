@@ -1,0 +1,370 @@
+import {
+  buildMapPointMarkerPinMarkup,
+  resolveMapPointMarkerHalo,
+  resolveMapPointMarkerIsDeadEnd,
+  resolveMapPointMarkerIsNaturalEndpoint,
+  resolveMapPointMarkerRing,
+} from "@/lib/map/map-point-marker-appearance";
+import {
+  createBaseLayer,
+  createMapHandle,
+  DEFAULT_MAP_VIEWPORT,
+  LEAFLET_MAP_MAX_ZOOM,
+  type MapHandle,
+} from "@/lib/map/map-handle";
+import type { MapViewport } from "@/types/map/maps";
+import { isPickModifierEvent, usePickModifierHeld } from "@/lib/map/pick-modifier";
+import { lineStringToLatLngs, segmentGroupColor } from "@/lib/map/segment-utils";
+import type { GeoSegmentRecord } from "@/types/map/geo-segments";
+import type { MapPointRecord } from "@/types/map/map-points";
+import type { MapWorkspaceState } from "@/types/map/maps";
+import type { MarkerNeighborRecord } from "@/types/map/marker-neighbors";
+import { useEffect, useRef, useState } from "react";
+import "leaflet/dist/leaflet.css";
+
+const MAP_POINT_CATEGORY_COLORS: Record<string, string> = {
+  junction: "#7c3aed",
+  gate: "#dc2626",
+  bridge: "#78350f",
+  viewpoint: "#0891b2",
+  water: "#2563eb",
+  cave: "#78350f",
+  rest_area: "#ca8a04",
+  sign: "#475569",
+  bench: "#a16207",
+  waterfall: "#0284c7",
+  custom: "#db2777",
+};
+
+function mapPointColor(category: string): string {
+  return MAP_POINT_CATEGORY_COLORS[category] ?? "#db2777";
+}
+
+export type LeafletMapPaneProps = {
+  workspace: MapWorkspaceState;
+  geoSegments?: GeoSegmentRecord[];
+  mapPoints?: MapPointRecord[];
+  markerNeighbors?: MarkerNeighborRecord[];
+  selectedMapPointId?: number | null;
+  placementMode?: boolean;
+  showSegments?: boolean;
+  showNeighborCoverage?: boolean;
+  markerIdsWithNeighborLinks?: number[];
+  deadEndMarkerIds?: number[];
+  naturalEndpointMarkerIds?: number[];
+  onReady: (handle: MapHandle) => void;
+  onViewportChange: (viewport: MapViewport) => void;
+  onMapPointClick?: (pointId: number) => void;
+  onMapPointPlace?: (latitude: number, longitude: number) => void;
+  onMapPointMove?: (pointId: number, latitude: number, longitude: number) => void;
+  onSegmentClick?: (segmentId: number) => void;
+  selectedSegmentId?: number | null;
+};
+
+export function LeafletMapPane({
+  workspace,
+  geoSegments = [],
+  mapPoints = [],
+  markerNeighbors = [],
+  selectedMapPointId = null,
+  placementMode = false,
+  showSegments = true,
+  showNeighborCoverage = false,
+  markerIdsWithNeighborLinks = [],
+  deadEndMarkerIds = [],
+  naturalEndpointMarkerIds = [],
+  onReady,
+  onViewportChange,
+  onMapPointClick,
+  onMapPointPlace,
+  onMapPointMove,
+  onSegmentClick,
+  selectedSegmentId = null,
+}: LeafletMapPaneProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<import("leaflet").Map | null>(null);
+  const segmentsLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const neighborLinksLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const suppressViewportSyncRef = useRef(false);
+  const onReadyRef = useRef(onReady);
+  const onViewportChangeRef = useRef(onViewportChange);
+  const onMapPointClickRef = useRef(onMapPointClick);
+  const onMapPointPlaceRef = useRef(onMapPointPlace);
+  const onMapPointMoveRef = useRef(onMapPointMove);
+  const onSegmentClickRef = useRef(onSegmentClick);
+  const [mapReady, setMapReady] = useState(false);
+  const pickModifierHeld = usePickModifierHeld();
+
+  onReadyRef.current = onReady;
+  onViewportChangeRef.current = onViewportChange;
+  onMapPointClickRef.current = onMapPointClick;
+  onMapPointPlaceRef.current = onMapPointPlace;
+  onMapPointMoveRef.current = onMapPointMove;
+  onSegmentClickRef.current = onSegmentClick;
+
+  useEffect(() => {
+    return () => {
+      mapRef.current?.remove();
+      mapRef.current = null;
+      segmentsLayerRef.current = null;
+      neighborLinksLayerRef.current = null;
+      markersLayerRef.current = null;
+      setMapReady(false);
+    };
+  }, [workspace.id]);
+
+  useEffect(() => {
+    let disposed = false;
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    if (mapRef.current) {
+      return;
+    }
+
+    async function initMap() {
+      const L = await import("leaflet");
+      if (disposed || !containerRef.current || mapRef.current) {
+        return;
+      }
+
+      const latitude = workspace.mapCenterLat ?? DEFAULT_MAP_VIEWPORT.latitude;
+      const longitude = workspace.mapCenterLng ?? DEFAULT_MAP_VIEWPORT.longitude;
+      const zoom = workspace.mapZoom ?? DEFAULT_MAP_VIEWPORT.zoom;
+
+      const map = L.map(containerRef.current, {
+        center: [latitude, longitude],
+        zoom,
+        maxZoom: LEAFLET_MAP_MAX_ZOOM,
+        zoomControl: true,
+        doubleClickZoom: false,
+      });
+
+      createBaseLayer(L, workspace.baseMapStyle).addTo(map);
+      segmentsLayerRef.current = L.layerGroup().addTo(map);
+      neighborLinksLayerRef.current = L.layerGroup().addTo(map);
+      markersLayerRef.current = L.layerGroup().addTo(map);
+      mapRef.current = map;
+      setMapReady(true);
+
+      function emitViewportChange() {
+        if (suppressViewportSyncRef.current) {
+          return;
+        }
+        const center = map.getCenter();
+        onViewportChangeRef.current({
+          latitude: center.lat,
+          longitude: center.lng,
+          zoom: map.getZoom(),
+        });
+      }
+
+      map.on("moveend", emitViewportChange);
+      map.on("zoomend", emitViewportChange);
+
+      map.on("click", (event) => {
+        if (placementMode && onMapPointPlaceRef.current) {
+          onMapPointPlaceRef.current(event.latlng.lat, event.latlng.lng);
+        }
+      });
+
+      onReadyRef.current(
+        createMapHandle(map, {
+          setSuppressViewportSync: (value) => {
+            suppressViewportSyncRef.current = value;
+          },
+          emitViewportChange,
+        }),
+      );
+    }
+
+    void initMap();
+
+    return () => {
+      disposed = true;
+    };
+  }, [
+    workspace.id,
+    workspace.baseMapStyle,
+    workspace.mapCenterLat,
+    workspace.mapCenterLng,
+    workspace.mapZoom,
+    placementMode,
+  ]);
+
+  useEffect(() => {
+    if (!mapReady || !mapRef.current || !segmentsLayerRef.current) {
+      return;
+    }
+
+    let disposed = false;
+
+    async function renderSegments() {
+      const L = await import("leaflet");
+      if (disposed || !segmentsLayerRef.current) {
+        return;
+      }
+
+      segmentsLayerRef.current.clearLayers();
+      if (!showSegments) {
+        return;
+      }
+
+      for (const segment of geoSegments) {
+        const latLngs = lineStringToLatLngs(segment.geometryJson.coordinates);
+        const isSelected = selectedSegmentId === segment.id;
+        const polyline = L.polyline(latLngs, {
+          color: isSelected ? "#2563eb" : segmentGroupColor(segment.segmentGroupId),
+          weight: isSelected ? 5 : 3,
+          opacity: isSelected ? 1 : 0.85,
+        });
+        polyline.on("click", () => onSegmentClickRef.current?.(segment.id));
+        polyline.addTo(segmentsLayerRef.current);
+      }
+    }
+
+    void renderSegments();
+    return () => {
+      disposed = true;
+    };
+  }, [geoSegments, mapReady, selectedSegmentId, showSegments]);
+
+  useEffect(() => {
+    if (!mapReady || !neighborLinksLayerRef.current) {
+      return;
+    }
+
+    let disposed = false;
+
+    async function renderNeighborLinks() {
+      const L = await import("leaflet");
+      if (disposed || !neighborLinksLayerRef.current) {
+        return;
+      }
+
+      neighborLinksLayerRef.current.clearLayers();
+      if (!showNeighborCoverage) {
+        return;
+      }
+
+      const pointsById = new Map(mapPoints.map((point) => [point.id, point]));
+      for (const neighbor of markerNeighbors) {
+        const from = pointsById.get(neighbor.fromMarkerId);
+        const to = pointsById.get(neighbor.toMarkerId);
+        if (!from || !to) {
+          continue;
+        }
+        L.polyline(
+          [
+            [from.latitude, from.longitude],
+            [to.latitude, to.longitude],
+          ],
+          { color: "#22c55e", weight: 2, opacity: 0.7, dashArray: "4 4" },
+        ).addTo(neighborLinksLayerRef.current);
+      }
+    }
+
+    void renderNeighborLinks();
+    return () => {
+      disposed = true;
+    };
+  }, [mapPoints, markerNeighbors, mapReady, showNeighborCoverage]);
+
+  useEffect(() => {
+    if (!mapReady || !markersLayerRef.current) {
+      return;
+    }
+
+    let disposed = false;
+    const neighborLinkSet = new Set(markerIdsWithNeighborLinks);
+    const deadEndSet = new Set(deadEndMarkerIds);
+    const naturalEndpointSet = new Set(naturalEndpointMarkerIds);
+
+    async function renderMarkers() {
+      const L = await import("leaflet");
+      if (disposed || !markersLayerRef.current) {
+        return;
+      }
+
+      markersLayerRef.current.clearLayers();
+
+      for (const point of mapPoints) {
+        const appearanceInput = {
+          pointId: point.id,
+          selected: selectedMapPointId === point.id,
+          linkMode: false,
+          inChain: false,
+          isLinkHead: false,
+          isSuggestion: false,
+          showNeighborCoverage,
+          markerIdsWithNeighborLinks: neighborLinkSet,
+          deadEndMarkerIds: deadEndSet,
+          naturalEndpointMarkerIds: naturalEndpointSet,
+        };
+
+        const ring = resolveMapPointMarkerRing(appearanceInput);
+        const halo = resolveMapPointMarkerHalo(ring, appearanceInput);
+        const pinSize = 14;
+        const pinOffset = -pinSize / 2;
+        const html = buildMapPointMarkerPinMarkup({
+          pinSize,
+          pinOffset,
+          ring,
+          fillColor: mapPointColor(point.category),
+          halo,
+          isDeadEnd: resolveMapPointMarkerIsDeadEnd(appearanceInput),
+          isNaturalEndpoint: resolveMapPointMarkerIsNaturalEndpoint(appearanceInput),
+          label: point.ref ?? "",
+          linkMode: false,
+          markerCursor: pickModifierHeld ? "grab" : "pointer",
+        });
+
+        const icon = L.divIcon({
+          className: "",
+          html,
+          iconSize: [pinSize, pinSize],
+          iconAnchor: [0, 0],
+        });
+
+        const marker = L.marker([point.latitude, point.longitude], {
+          icon,
+          draggable: pickModifierHeld,
+        });
+
+        marker.on("click", (event) => {
+          const LEvent = event as import("leaflet").LeafletMouseEvent;
+          if (isPickModifierEvent(LEvent.originalEvent)) {
+            return;
+          }
+          onMapPointClickRef.current?.(point.id);
+        });
+
+        marker.on("dragend", () => {
+          const position = marker.getLatLng();
+          onMapPointMoveRef.current?.(point.id, position.lat, position.lng);
+        });
+
+        marker.addTo(markersLayerRef.current);
+      }
+    }
+
+    void renderMarkers();
+    return () => {
+      disposed = true;
+    };
+  }, [
+    deadEndMarkerIds,
+    mapPoints,
+    mapReady,
+    markerIdsWithNeighborLinks,
+    naturalEndpointMarkerIds,
+    pickModifierHeld,
+    selectedMapPointId,
+    showNeighborCoverage,
+  ]);
+
+  return <div ref={containerRef} className="h-full w-full" data-test="leaflet-map-pane" />;
+}

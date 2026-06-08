@@ -10,6 +10,6 @@ export const dashboard_admin_routes = [
 export function getDashboardPrimaryRoutes(): SidebarItem[] {
   return [
     { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { title: "Map", href: "/dashboard", icon: Map },
+    { title: "Map", href: "/map", icon: Map },
   ];
 }

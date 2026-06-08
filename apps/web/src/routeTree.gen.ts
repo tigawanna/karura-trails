@@ -14,6 +14,8 @@ import { Route as DashboardLayoutRouteImport } from './routes/_dashboard/layout'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as DashboardMapLayoutRouteImport } from './routes/_dashboard/map/layout'
+import { Route as DashboardMapIndexRouteImport } from './routes/_dashboard/map/index'
 import { Route as DashboardEventsIndexRouteImport } from './routes/_dashboard/events/index'
 import { Route as DashboardDashboardIndexRouteImport } from './routes/_dashboard/dashboard/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -42,6 +44,16 @@ const AuthSignupRoute = AuthSignupRouteImport.update({
   path: '/signup',
   getParentRoute: () => AuthLayoutRoute,
 } as any)
+const DashboardMapLayoutRoute = DashboardMapLayoutRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => DashboardLayoutRoute,
+} as any)
+const DashboardMapIndexRoute = DashboardMapIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardMapLayoutRoute,
+} as any)
 const DashboardEventsIndexRoute = DashboardEventsIndexRouteImport.update({
   id: '/events/',
   path: '/events/',
@@ -61,11 +73,13 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthLayoutRouteWithChildren
+  '/map': typeof DashboardMapLayoutRouteWithChildren
   '/auth/signup': typeof AuthSignupRoute
   '/auth/': typeof AuthIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/': typeof DashboardDashboardIndexRoute
   '/events/': typeof DashboardEventsIndexRoute
+  '/map/': typeof DashboardMapIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -74,40 +88,54 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard': typeof DashboardDashboardIndexRoute
   '/events': typeof DashboardEventsIndexRoute
+  '/map': typeof DashboardMapIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_dashboard': typeof DashboardLayoutRouteWithChildren
   '/auth': typeof AuthLayoutRouteWithChildren
+  '/_dashboard/map': typeof DashboardMapLayoutRouteWithChildren
   '/auth/signup': typeof AuthSignupRoute
   '/auth/': typeof AuthIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_dashboard/dashboard/': typeof DashboardDashboardIndexRoute
   '/_dashboard/events/': typeof DashboardEventsIndexRoute
+  '/_dashboard/map/': typeof DashboardMapIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/map'
     | '/auth/signup'
     | '/auth/'
     | '/api/auth/$'
     | '/dashboard/'
     | '/events/'
+    | '/map/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/signup' | '/auth' | '/api/auth/$' | '/dashboard' | '/events'
+  to:
+    | '/'
+    | '/auth/signup'
+    | '/auth'
+    | '/api/auth/$'
+    | '/dashboard'
+    | '/events'
+    | '/map'
   id:
     | '__root__'
     | '/'
     | '/_dashboard'
     | '/auth'
+    | '/_dashboard/map'
     | '/auth/signup'
     | '/auth/'
     | '/api/auth/$'
     | '/_dashboard/dashboard/'
     | '/_dashboard/events/'
+    | '/_dashboard/map/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -154,6 +182,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthSignupRouteImport
       parentRoute: typeof AuthLayoutRoute
     }
+    '/_dashboard/map': {
+      id: '/_dashboard/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof DashboardMapLayoutRouteImport
+      parentRoute: typeof DashboardLayoutRoute
+    }
+    '/_dashboard/map/': {
+      id: '/_dashboard/map/'
+      path: '/'
+      fullPath: '/map/'
+      preLoaderRoute: typeof DashboardMapIndexRouteImport
+      parentRoute: typeof DashboardMapLayoutRoute
+    }
     '/_dashboard/events/': {
       id: '/_dashboard/events/'
       path: '/events'
@@ -178,12 +220,25 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface DashboardMapLayoutRouteChildren {
+  DashboardMapIndexRoute: typeof DashboardMapIndexRoute
+}
+
+const DashboardMapLayoutRouteChildren: DashboardMapLayoutRouteChildren = {
+  DashboardMapIndexRoute: DashboardMapIndexRoute,
+}
+
+const DashboardMapLayoutRouteWithChildren =
+  DashboardMapLayoutRoute._addFileChildren(DashboardMapLayoutRouteChildren)
+
 interface DashboardLayoutRouteChildren {
+  DashboardMapLayoutRoute: typeof DashboardMapLayoutRouteWithChildren
   DashboardDashboardIndexRoute: typeof DashboardDashboardIndexRoute
   DashboardEventsIndexRoute: typeof DashboardEventsIndexRoute
 }
 
 const DashboardLayoutRouteChildren: DashboardLayoutRouteChildren = {
+  DashboardMapLayoutRoute: DashboardMapLayoutRouteWithChildren,
   DashboardDashboardIndexRoute: DashboardDashboardIndexRoute,
   DashboardEventsIndexRoute: DashboardEventsIndexRoute,
 }
