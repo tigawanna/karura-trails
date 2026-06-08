@@ -21,9 +21,14 @@ type CloudflareServerEntry = {
   ) => Promise<Response> | Response;
 };
 
+function isHonoApiRoute(pathname: string): boolean {
+  return pathname.startsWith("/api") && !pathname.startsWith("/api/auth");
+}
+
 const serverEntry: CloudflareServerEntry = {
   async fetch(request, env, ctx) {
-    if (new URL(request.url).pathname.startsWith("/api")) {
+    const pathname = new URL(request.url).pathname;
+    if (isHonoApiRoute(pathname)) {
       return honoApp.fetch(request, env, ctx);
     }
 

@@ -4,14 +4,14 @@ import { clientEnv } from "@/lib/client-env";
 import { AppConfig } from "@/utils/system";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { Link, useRouter } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Route } from "../index";
 
 const signinSchema = z.object({
-  email: z.string().email(),
+  email: z.email(),
   password: z.string().min(8),
 });
 
@@ -22,7 +22,6 @@ const googleEnabled = Boolean(import.meta.env.VITE_GOOGLE_AUTH_ENABLED);
 export function SigninComponent() {
   const qc = useQueryClient();
   const router = useRouter();
-  const navigate = useNavigate({ from: "/auth/" });
   const { returnTo } = Route.useSearch();
 
   const form = useForm<SigninValues>({
@@ -51,7 +50,7 @@ export function SigninComponent() {
       toast.success("Signed in");
       await router.invalidate();
       await qc.fetchQuery(viewerqueryOptions);
-      void navigate({ to: "/dashboard" });
+      void router.navigate({ to: returnTo || "/dashboard" });
     },
   });
 

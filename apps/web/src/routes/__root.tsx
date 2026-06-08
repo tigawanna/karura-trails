@@ -1,3 +1,4 @@
+import { TanstackDevtools } from "@/lib/tanstack/devtools/devtools";
 import {
   TanstackQueryProvider,
   getTanstackQueryContext,
@@ -56,6 +57,7 @@ function RootDocument() {
           <TanstackQueryProvider queryClient={queryClient}>
             <Outlet />
             <Toaster />
+            {import.meta.env.DEV ? <TanstackDevtools /> : null}
           </TanstackQueryProvider>
         </ThemeProvider>
         <Scripts />

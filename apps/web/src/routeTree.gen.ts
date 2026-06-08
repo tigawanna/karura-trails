@@ -16,6 +16,7 @@ import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as DashboardEventsIndexRouteImport } from './routes/_dashboard/events/index'
 import { Route as DashboardDashboardIndexRouteImport } from './routes/_dashboard/dashboard/index'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const AuthLayoutRoute = AuthLayoutRouteImport.update({
   id: '/auth',
@@ -51,12 +52,18 @@ const DashboardDashboardIndexRoute = DashboardDashboardIndexRouteImport.update({
   path: '/dashboard/',
   getParentRoute: () => DashboardLayoutRoute,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthLayoutRouteWithChildren
   '/auth/signup': typeof AuthSignupRoute
   '/auth/': typeof AuthIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/': typeof DashboardDashboardIndexRoute
   '/events/': typeof DashboardEventsIndexRoute
 }
@@ -64,6 +71,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/signup': typeof AuthSignupRoute
   '/auth': typeof AuthIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard': typeof DashboardDashboardIndexRoute
   '/events': typeof DashboardEventsIndexRoute
 }
@@ -74,6 +82,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthLayoutRouteWithChildren
   '/auth/signup': typeof AuthSignupRoute
   '/auth/': typeof AuthIndexRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
   '/_dashboard/dashboard/': typeof DashboardDashboardIndexRoute
   '/_dashboard/events/': typeof DashboardEventsIndexRoute
 }
@@ -84,10 +93,11 @@ export interface FileRouteTypes {
     | '/auth'
     | '/auth/signup'
     | '/auth/'
+    | '/api/auth/$'
     | '/dashboard/'
     | '/events/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth/signup' | '/auth' | '/dashboard' | '/events'
+  to: '/' | '/auth/signup' | '/auth' | '/api/auth/$' | '/dashboard' | '/events'
   id:
     | '__root__'
     | '/'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/auth/signup'
     | '/auth/'
+    | '/api/auth/$'
     | '/_dashboard/dashboard/'
     | '/_dashboard/events/'
   fileRoutesById: FileRoutesById
@@ -103,6 +114,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardLayoutRoute: typeof DashboardLayoutRouteWithChildren
   AuthLayoutRoute: typeof AuthLayoutRouteWithChildren
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -156,6 +168,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardDashboardIndexRouteImport
       parentRoute: typeof DashboardLayoutRoute
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -191,6 +210,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardLayoutRoute: DashboardLayoutRouteWithChildren,
   AuthLayoutRoute: AuthLayoutRouteWithChildren,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

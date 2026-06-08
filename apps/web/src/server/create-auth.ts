@@ -4,6 +4,7 @@ import { user as userTable } from "@/lib/drizzle/schema/auth-schema";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { admin } from "better-auth/plugins/admin";
+import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 
 export function createAuth(env: CloudflareBindings) {
@@ -48,6 +49,6 @@ export function createAuth(env: CloudflareBindings) {
           },
         }
       : undefined,
-    plugins: [admin()],
+    plugins: [admin(), tanstackStartCookies()],
   });
 }

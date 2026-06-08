@@ -1,4 +1,4 @@
-import { createAuth } from "@/server/create-auth";
+import { getAuth } from "@/lib/auth";
 import { createEvlogFsDrain } from "@/server/evlog-drain";
 import { syncRoutes } from "@/server/sync-routes";
 import { parseError } from "evlog";
@@ -19,8 +19,7 @@ export const apiRoutes = new Hono<ApiBindings>()
     }),
   )
   .use("*", async (c, next) => {
-    const auth = createAuth(c.env);
-    const identify = createAuthMiddleware(auth, { exclude: ["/auth/**", "/_evlog/**"] });
+    const identify = createAuthMiddleware(getAuth(), { exclude: ["/_evlog/**"] });
     await identify(c.get("log"), c.req.raw.headers, c.req.path);
     await next();
   })
@@ -42,10 +41,6 @@ export const apiRoutes = new Hono<ApiBindings>()
       maxAge: 86400,
     }),
   )
-  .all("/auth/*", async (c) => {
-    const auth = createAuth(c.env);
-    return auth.handler(c.req.raw);
-  })
   .get("/health", (c) =>
     c.json({
       ok: true,

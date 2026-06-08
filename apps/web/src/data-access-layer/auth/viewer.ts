@@ -1,6 +1,9 @@
+import { getSession } from "@/data-access-layer/auth/auth.functions";
+import { getAuth } from "@/lib/auth";
 import { authClient, type BetterAuthSession } from "@/lib/better-auth/client";
 import { queryOptions, useMutation, useQueryClient, useSuspenseQuery } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
+import { createMiddleware } from "@tanstack/react-start";
 
 type ViewerUser = BetterAuthSession["user"];
 type ViewerSession = BetterAuthSession["session"];
@@ -21,13 +24,15 @@ export function isAdminUser(user: ViewerUser | undefined): boolean {
 export const viewerqueryOptions = queryOptions({
   queryKey: ["viewer"],
   queryFn: async () => {
-    const { data, error } = await authClient.getSession();
-    if (error) {
-      return { data: null, error };
+    const session = await getSession();
+    if (!session) {
+      return { data: null, error: null };
     }
-    return { data, error: null };
+    return {
+      data: { user: session.user, session: session.session },
+      error: null,
+    };
   },
-  staleTime: 10,
 });
 
 export function useViewer() {
@@ -50,3 +55,16 @@ export function useViewer() {
     logoutMutation,
   } as const;
 }
+
+export const viewerMiddleware = createMiddleware().server(async ({ next, request }) => {
+  const session = await getAuth().api.getSession({ headers: request.headers });
+  if (!session) {
+    const returnTo = new URL(request.url).pathname;
+    throw redirect({ to: "/auth", search: { returnTo } });
+  }
+  return await next({
+    context: {
+      viewer: { user: session.user, session: session.session },
+    },
+  });
+});

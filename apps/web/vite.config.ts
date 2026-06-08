@@ -1,4 +1,5 @@
 import { cloudflare } from "@cloudflare/vite-plugin";
+import { devtools } from "@tanstack/devtools-vite";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
 import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -23,6 +24,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   plugins: [
+    devtools(),
     evlog({ service: "karura-trails" }),
     cloudflare({ viteEnvironment: { name: "ssr" } }),
     tailwindcss(),

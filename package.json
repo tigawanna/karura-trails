@@ -11,7 +11,8 @@
     "check-types": "turbo run check-types",
     "quality": "turbo run //#lint //#format",
     "quality:fix": "turbo run //#lint:fix //#format:fix",
-    "prepare": "vp config"
+    "prepare": "vp config",
+    "db:studio": "pnpm --filter web db:studio"
   },
   "devDependencies": {
     "@typescript/native-preview": "7.0.0-dev.20260519.1",

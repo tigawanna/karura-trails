@@ -1,4 +1,4 @@
-import { createAuth } from "@/server/create-auth";
+import { getAuth } from "@/lib/auth";
 import { createDb } from "@/db/d1";
 import { syncEvents } from "@/lib/drizzle/schema/sync-events-schema";
 import type {
@@ -52,7 +52,7 @@ function normalizeIncomingEvent(event: SyncEventPayload, deviceId: string) {
 
 export const syncRoutes = new Hono<{ Bindings: CloudflareBindings }>()
   .post("/events", async (c) => {
-    const auth = createAuth(c.env);
+    const auth = getAuth();
     const syncSecret = c.env.SYNC_API_SECRET;
     const headerSecret = c.req.header("x-sync-secret");
     const hasSyncSecret = Boolean(syncSecret && headerSecret === syncSecret);
@@ -90,7 +90,7 @@ export const syncRoutes = new Hono<{ Bindings: CloudflareBindings }>()
     return c.json(response);
   })
   .get("/events", async (c) => {
-    const auth = createAuth(c.env);
+    const auth = getAuth();
     const after = c.req.query("after");
     const limit = Math.min(Number(c.req.query("limit") ?? PULL_BATCH_LIMIT), PULL_BATCH_LIMIT);
     const includeUnverified = c.req.query("includeUnverified") === "true";
@@ -126,7 +126,7 @@ export const syncRoutes = new Hono<{ Bindings: CloudflareBindings }>()
     return c.json(response);
   })
   .patch("/events/:id/verify", async (c) => {
-    const auth = createAuth(c.env);
+    const auth = getAuth();
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     if (session?.user?.role !== "admin") {
       return c.json({ error: "Forbidden" }, 403);
