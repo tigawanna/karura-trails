@@ -68,12 +68,12 @@ const getPlugins = (bundleId: UniqueIdentifier) => {
       "expo-splash-screen",
       {
         image: "./assets/images/splash-icon.png",
-        imageWidth: 120,
+        imageWidth: 642,
         resizeMode: "contain",
-        backgroundColor: BrandColors.darkForestGreen,
+        backgroundColor: BrandColors.splashBackground,
         dark: {
           image: "./assets/images/splash-icon.png",
-          backgroundColor: BrandColors.deepForestGreen,
+          backgroundColor: BrandColors.splashBackground,
         },
       },
     ],
@@ -121,10 +121,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     android: {
       ...config.android,
       adaptiveIcon: {
-        backgroundColor: BrandColors.darkForestGreen,
-        foregroundImage: "./assets/images/android-icon-foreground.png",
-        backgroundImage: "./assets/images/android-icon-background.png",
-        monochromeImage: "./assets/images/android-icon-monochrome.png",
+        backgroundColor: BrandColors.splashBackground,
+        foregroundImage: "./assets/images/adaptive-icon.png",
       },
       predictiveBackGestureEnabled: false,
       package: bundleIdentifier,

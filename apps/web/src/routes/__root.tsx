@@ -22,7 +22,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon.png", type: "image/png", sizes: "48x48" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png", sizes: "1024x1024" },
     ],
   }),
   component: RootDocument,
