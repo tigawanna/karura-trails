@@ -16,7 +16,7 @@ import {
 import { QueryActivityNprogress } from "@/components/navigation/nprogress/QueryActivityNprogress";
 import { TSRBreadCrumbs } from "@/lib/tanstack/router/TSRBreadCrumbs";
 import { AppConfig } from "@/utils/system";
-import { Outlet } from "@tanstack/react-router";
+import { Outlet, useRouterState } from "@tanstack/react-router";
 import { DashboardSidebarFooter } from "./DashboardSidebarFooter";
 import { DashboardSidebarHeader } from "./DashboardSidebarHeader";
 
@@ -37,6 +37,13 @@ export function DashboardLayout({
   adminRoutes,
   adminLabel,
 }: DashboardLayoutProps) {
+  const isMapWorkspace = useRouterState({
+    select: (state) => {
+      const path = state.location.pathname;
+      return path.startsWith("/map") || path.startsWith("/maps");
+    },
+  });
+
   return (
     <SidebarProvider defaultOpen={false} className="h-svh overflow-hidden">
       <QueryActivityNprogress />
@@ -74,17 +81,25 @@ export function DashboardLayout({
         <SidebarRail />
       </Sidebar>
       <SidebarInset className="min-h-0">
-        <header className="sticky top-0 z-30 flex h-16 items-center gap-2 bg-base-100 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <div className="flex items-center gap-2 px-4">
-            <SidebarTrigger className="-ml-1" />
-            <Separator orientation="vertical" className="mr-2 h-4" />
-            <TSRBreadCrumbs />
+        {isMapWorkspace ? (
+          <div className="flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden">
+            <Outlet />
           </div>
-          <div className="ml-auto px-4 text-sm text-base-content/60">{AppConfig.name}</div>
-        </header>
-        <div className="@container/main flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-auto p-6">
-          <Outlet />
-        </div>
+        ) : (
+          <>
+            <header className="sticky top-0 z-30 flex h-16 items-center gap-2 bg-base-100 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+              <div className="flex items-center gap-2 px-4">
+                <SidebarTrigger className="-ml-1" />
+                <Separator orientation="vertical" className="mr-2 h-4" />
+                <TSRBreadCrumbs />
+              </div>
+              <div className="ml-auto px-4 text-sm text-base-content/60">{AppConfig.name}</div>
+            </header>
+            <div className="@container/main flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-auto p-6">
+              <Outlet />
+            </div>
+          </>
+        )}
       </SidebarInset>
     </SidebarProvider>
   );

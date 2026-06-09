@@ -1,5 +1,5 @@
 import { MainLoader } from "@/components/wrappers/MainLoader";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Suspense } from "react";
 
 export const Route = createFileRoute("/_dashboard/dashboard/")({
@@ -19,12 +19,17 @@ function DashboardPage() {
         </div>
         <div className="rounded-2xl border border-base-content/10 bg-base-100/70 p-6">
           <p className="text-sm text-base-content/70">
-            Open the map workspace to view and edit Karura trail markers, segments, and routing
-            data.
+            Open the full map workspace to edit markers on the map, or use the data explorer to
+            browse tables and focus rows on the map.
           </p>
-          <a href="/map" className="btn mt-4 btn-sm btn-primary">
-            Open map workspace
-          </a>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Link to="/maps" className="btn btn-sm btn-primary">
+              Open map workspace
+            </Link>
+            <Link to="/map" className="btn btn-outline btn-sm">
+              Browse data tables
+            </Link>
+          </div>
         </div>
       </section>
     </Suspense>

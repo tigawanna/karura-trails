@@ -54,19 +54,28 @@ import {
   buildMarkerIdsWithNeighborLinks,
   buildNaturalEndpointMarkerIds,
 } from "@/lib/map/marker-neighbor-coverage";
+import { filterMapPointsForMapDisplay } from "@/lib/map/filter-map-points-for-map-display";
 import { MAP_POINT_FOCUS_ZOOM, type MapHandle } from "@/lib/map/map-handle";
 import { usePglite } from "@/lib/pglite/components/PgliteProvider.client";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import {
+  ArrowLeft,
   Database,
   Download,
+  Eye,
+  EyeOff,
+  ExternalLink,
   HelpCircle,
   Link2,
   MapPin,
   Network,
   RefreshCw,
   Search,
+  Table2,
   Upload,
+  X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -74,9 +83,11 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 
 type MapExplorerPageProps = {
   mapId: number;
+  variant?: "explorer" | "workspace";
 };
 
-export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
+export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPageProps) {
+  const isWorkspace = variant === "workspace";
   const { db } = usePglite();
   const queryClient = useQueryClient();
   const mapHandleRef = useRef<MapHandle | null>(null);
@@ -96,6 +107,9 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
   const setShowNeighborCoverage = useMapExplorerStore((state) => state.setShowNeighborCoverage);
   const showSegments = useMapExplorerStore((state) => state.showSegments);
   const setShowSegments = useMapExplorerStore((state) => state.setShowSegments);
+  const hideVirtualMarkers = useMapExplorerStore((state) => state.hideVirtualMarkers);
+  const setHideVirtualMarkers = useMapExplorerStore((state) => state.setHideVirtualMarkers);
+  const statusMessage = useMapExplorerStore((state) => state.statusMessage);
   const linkMode = useMapExplorerStore((state) => state.linkMode);
   const setLinkMode = useMapExplorerStore((state) => state.setLinkMode);
   const linkChain = useMapExplorerStore((state) => state.linkChain);
@@ -298,6 +312,14 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
 
   const selectedMapPointId = selection?.kind === "map-point" ? selection.id : null;
   const selectedSegmentId = selection?.kind === "segment" ? selection.id : null;
+  const displayedMapPoints = useMemo(
+    () =>
+      filterMapPointsForMapDisplay(mapPoints, {
+        hideVirtualMarkers,
+        alwaysVisiblePointIds: selectedMapPointId != null ? [selectedMapPointId] : [],
+      }),
+    [hideVirtualMarkers, mapPoints, selectedMapPointId],
+  );
   const editingPoint =
     editPointId != null ? (mapPoints.find((point) => point.id === editPointId) ?? null) : null;
 
@@ -345,6 +367,7 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
     selectedMapPointId,
     pathSlugs,
     onToggleNeighborCoverage: () => setShowNeighborCoverage(!showNeighborCoverage),
+    onToggleHideVirtualMarkers: () => setHideVirtualMarkers(!hideVirtualMarkers),
     onToggleSegments: () => setShowSegments(!showSegments),
     onTogglePlacementMode: () => {
       setPlacementMode(!placementMode);
@@ -493,294 +516,417 @@ export function MapExplorerPage({ mapId }: MapExplorerPageProps) {
     );
   }
 
+  const mapPane = (
+    <LeafletMapPane
+      workspace={workspace}
+      geoSegments={geoSegments}
+      mapPoints={displayedMapPoints}
+      markerNeighbors={markerNeighbors}
+      selectedMapPointId={selectedMapPointId}
+      selectedSegmentId={selectedSegmentId}
+      placementMode={placementMode}
+      linkMode={linkMode || routePlanner.pickTarget != null}
+      linkChainPointIds={linkChain}
+      linkRouteStartId={routePlanner.startId}
+      linkRouteEndId={routePlanner.endId}
+      linkRouteViaIds={routePlanner.viaIds}
+      showSegments={showSegments}
+      showNeighborCoverage={showNeighborCoverage}
+      virtualPreviewEdges={virtualPreviewEdges}
+      markerIdsWithNeighborLinks={markerIdsWithNeighborLinks}
+      deadEndMarkerIds={deadEndMarkerIds}
+      naturalEndpointMarkerIds={naturalEndpointMarkerIds}
+      onReady={(handle) => {
+        mapHandleRef.current = handle;
+      }}
+      onViewportChange={(viewport) => {
+        void updateMapWorkspace(db, mapId, {
+          mapCenterLat: viewport.latitude,
+          mapCenterLng: viewport.longitude,
+          mapZoom: viewport.zoom,
+        });
+      }}
+      onMapPointClick={(pointId, modifiers) => {
+        if (routePlanner.handleMapPointClickForRoutePick(pointId)) {
+          return;
+        }
+        if (linkMode && isPickModifierEvent(modifiers)) {
+          appendLinkChainPoint(pointId);
+          return;
+        }
+        setSelection({ kind: "map-point", id: pointId });
+      }}
+      onMapPointPlace={handleMapPointPlace}
+      onMapPointMove={(pointId, latitude, longitude) => {
+        updatePointMutation.mutate({ pointId, latitude, longitude });
+      }}
+      onSegmentClick={(segmentId) => {
+        setSelection({ kind: "segment", id: segmentId });
+      }}
+    />
+  );
+
+  const mapLegendHints =
+    graphPreviewOpen || hideVirtualMarkers ? (
+      <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[1000] flex flex-col items-start gap-1 px-3">
+        {graphPreviewOpen ? (
+          <div className="max-w-[18rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm">
+            Dashed lines are virtual graph preview edges (not saved).
+          </div>
+        ) : null}
+        {hideVirtualMarkers ? (
+          <div className="max-w-[14rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm">
+            Virtual markers are hidden. Selected markers stay visible.
+          </div>
+        ) : null}
+      </div>
+    ) : null;
+
+  const linkComposerPanel = (
+    <MapLinkComposerPanel
+      mapPoints={mapPoints}
+      linkChain={linkChain}
+      pathSlug={pathSlug}
+      onPathSlugChange={setPathSlug}
+      onAppendToChain={appendLinkChainPoint}
+      onRemoveFromChain={removeLinkChainPointAt}
+      onClearChain={clearLinkChain}
+      isSaving={createChainMutation.isPending}
+      onSaveSegments={() => createChainMutation.mutate({ pointIds: linkChain, pathSlug })}
+      routePlanner={routePlanner}
+    />
+  );
+
+  const detailsPanel = (
+    <MapExplorerDetailsPanel
+      selection={selection}
+      mapPoints={mapPoints}
+      markerNeighbors={markerNeighbors}
+      geoSegments={geoSegments}
+      segmentEdges={segmentEdges}
+      isSavingNeighbors={replaceNeighborsMutation.isPending}
+      onEditPoint={(pointId) => setEditPointId(pointId)}
+      onReplaceNeighbors={(pointId, toMarkerIds) =>
+        replaceNeighborsMutation.mutate({ fromMarkerId: pointId, toMarkerIds })
+      }
+    />
+  );
+
   return (
     <div
-      className="flex h-[calc(100vh-8rem)] min-h-[640px] flex-col gap-3"
-      data-test="map-explorer-page"
+      className="flex h-full min-h-0 flex-col"
+      data-test={isWorkspace ? "map-workspace-page" : "map-explorer-page"}
     >
-      <div className="rounded-xl border border-base-content/10 bg-base-100/80 p-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <div>
-            <h1 className="text-lg font-semibold">{workspace.name}</h1>
-            <p className="text-xs text-base-content/55">
-              Desktop map workspace. Best viewed on a wide screen; tables scroll horizontally.
-            </p>
-          </div>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            <div className="join">
-              <input
-                className="input-bordered input input-sm join-item w-56"
-                placeholder="Search location…"
-                value={locationQuery}
-                onChange={(event) => setLocationQuery(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") {
-                    void handleSearch();
-                  }
-                }}
-              />
-              <button
-                type="button"
-                className="btn join-item btn-sm"
-                onClick={() => void handleSearch()}
-                disabled={isSearching}
-              >
-                <Search className="size-3.5" />
-              </button>
-            </div>
-            <button
-              type="button"
-              className={placementMode ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
-              onClick={() => {
-                setPlacementMode(!placementMode);
-                if (!placementMode) {
-                  setLinkMode(false);
-                }
-              }}
-            >
-              <MapPin className="size-3.5" />
-              Place marker
-            </button>
-            <button
-              type="button"
-              className={linkMode ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
-              onClick={() => {
-                setLinkMode(!linkMode);
-                if (!linkMode) {
-                  setPlacementMode(false);
-                }
-              }}
-            >
-              <Link2 className="size-3.5" />
-              Link mode
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              disabled={seedTrailsMutation.isPending}
-              onClick={() => seedTrailsMutation.mutate()}
-            >
-              <Database className="size-3.5" />
-              Import trails
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => setShowNeighborCoverage(!showNeighborCoverage)}
-            >
-              Neighbors
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => setShowSegments(!showSegments)}
-            >
-              Segments
-            </button>
-            <button
-              type="button"
-              className={graphPreviewOpen ? "btn btn-sm btn-secondary" : "btn btn-outline btn-sm"}
-              onClick={() => handleToggleGraphPreview()}
-              disabled={pathSlugs.length === 0}
-              data-test="graph-preview-toggle"
-            >
-              <Network className="size-3.5" />
-              Graph preview
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => flushMutation.mutate()}
-              disabled={flushMutation.isPending || pendingEventCount === 0}
-            >
-              <Upload className="size-3.5" />
-              Flush events
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              onClick={() => squashMutation.mutate()}
-              disabled={squashMutation.isPending}
-            >
-              Squash approved
-            </button>
-            <button type="button" className="btn btn-outline btn-sm" onClick={handleExport}>
-              <Download className="size-3.5" />
-              Export JSON
-            </button>
-            <button
-              type="button"
-              className="btn btn-outline btn-sm"
-              disabled={importMutation.isPending}
-              onClick={() => importInputRef.current?.click()}
-            >
-              <Upload className="size-3.5" />
-              Import JSON
-            </button>
+      <header className="flex shrink-0 items-center gap-2 border-b border-base-content/10 bg-base-100/90 px-2 py-1.5">
+        <SidebarTrigger className="-ml-0.5" />
+        <Link
+          to="/dashboard"
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-md text-base-content/60 hover:bg-base-content/10 hover:text-base-content"
+          aria-label="Back to dashboard"
+        >
+          <ArrowLeft className="size-4" />
+        </Link>
+        <div className="min-w-0 flex-1">
+          <h1 className="truncate text-sm font-semibold">{workspace.name}</h1>
+        </div>
+        {isWorkspace ? (
+          <Link to="/map" className="btn gap-1.5 btn-ghost btn-sm" data-test="open-data-explorer">
+            <Table2 className="size-3.5" />
+            Data explorer
+          </Link>
+        ) : (
+          <Link
+            to="/maps/$mapId"
+            params={{ mapId: String(mapId) }}
+            className="btn gap-1.5 btn-ghost btn-sm"
+            data-test="open-map-workspace"
+          >
+            <ExternalLink className="size-3.5" />
+            Full map
+          </Link>
+        )}
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <div className="join">
             <input
-              ref={importInputRef}
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              onChange={handleImportFileChange}
+              className="input-bordered input input-sm join-item w-56"
+              placeholder="Search location…"
+              value={locationQuery}
+              onChange={(event) => setLocationQuery(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  void handleSearch();
+                }
+              }}
             />
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => openShortcuts(true)}
-              title="Keyboard shortcuts (Shift+?)"
-              data-test="keyboard-shortcuts-open"
+              className="btn join-item btn-sm"
+              onClick={() => void handleSearch()}
+              disabled={isSearching}
             >
-              <HelpCircle className="size-3.5" />
+              <Search className="size-3.5" />
             </button>
+          </div>
+          <button
+            type="button"
+            className={placementMode ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
+            onClick={() => {
+              setPlacementMode(!placementMode);
+              if (!placementMode) {
+                setLinkMode(false);
+              }
+            }}
+          >
+            <MapPin className="size-3.5" />
+            Place marker
+          </button>
+          <button
+            type="button"
+            className={linkMode ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
+            onClick={() => {
+              setLinkMode(!linkMode);
+              if (!linkMode) {
+                setPlacementMode(false);
+              }
+            }}
+          >
+            <Link2 className="size-3.5" />
+            Link mode
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={seedTrailsMutation.isPending}
+            onClick={() => seedTrailsMutation.mutate()}
+          >
+            <Database className="size-3.5" />
+            Import trails
+          </button>
+          <button
+            type="button"
+            className={showNeighborCoverage ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
+            onClick={() => setShowNeighborCoverage(!showNeighborCoverage)}
+          >
+            Neighbors
+          </button>
+          <button
+            type="button"
+            className={showSegments ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
+            onClick={() => setShowSegments(!showSegments)}
+          >
+            Segments
+          </button>
+          <button
+            type="button"
+            className={hideVirtualMarkers ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
+            onClick={() => setHideVirtualMarkers(!hideVirtualMarkers)}
+            title={hideVirtualMarkers ? "Show virtual markers" : "Hide virtual markers"}
+          >
+            {hideVirtualMarkers ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            Virtual
+          </button>
+          <button
+            type="button"
+            className={graphPreviewOpen ? "btn btn-sm btn-secondary" : "btn btn-outline btn-sm"}
+            onClick={() => handleToggleGraphPreview()}
+            disabled={pathSlugs.length === 0}
+            data-test="graph-preview-toggle"
+          >
+            <Network className="size-3.5" />
+            Graph preview
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => flushMutation.mutate()}
+            disabled={flushMutation.isPending || pendingEventCount === 0}
+          >
+            <Upload className="size-3.5" />
+            Flush events
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => squashMutation.mutate()}
+            disabled={squashMutation.isPending}
+          >
+            Squash approved
+          </button>
+          <button type="button" className="btn btn-outline btn-sm" onClick={handleExport}>
+            <Download className="size-3.5" />
+            Export JSON
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={importMutation.isPending}
+            onClick={() => importInputRef.current?.click()}
+          >
+            <Upload className="size-3.5" />
+            Import JSON
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportFileChange}
+          />
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => openShortcuts(true)}
+            title="Keyboard shortcuts (Shift+?)"
+            data-test="keyboard-shortcuts-open"
+          >
+            <HelpCircle className="size-3.5" />
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              void queryClient.invalidateQueries({ queryKey: ["pglite"] });
+            }}
+          >
+            <RefreshCw className="size-3.5" />
+          </button>
+        </div>
+      </header>
+
+      {isWorkspace ? (
+        <div className="relative min-h-0 flex-1 overflow-hidden bg-base-200">
+          <div className="relative h-full min-h-0">
+            {mapPane}
+            {mapLegendHints}
+          </div>
+          {linkMode ? (
+            <div className="absolute inset-y-0 right-0 z-[1100] flex w-96 flex-col border-l border-base-content/10 bg-base-100 shadow-xl">
+              <div className="flex items-center justify-between border-b border-base-content/10 px-3 py-2">
+                <span className="text-sm font-semibold">Link composer</span>
+                <button
+                  type="button"
+                  className="btn btn-circle btn-ghost btn-xs"
+                  onClick={() => {
+                    setLinkMode(false);
+                    setStatusMessage(null);
+                  }}
+                  aria-label="Close link composer"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">{linkComposerPanel}</div>
+            </div>
+          ) : null}
+          {graphPreviewOpen ? (
+            <div className="absolute inset-y-0 right-0 z-[1150] w-96 shadow-xl">
+              <MapGraphPreviewPanel
+                pathGroups={pathGroups}
+                previews={graphPreviews}
+                loading={graphPreviewLoading}
+                error={graphPreviewError}
+                onReload={reloadGraphPreview}
+                onClose={closeGraphPreview}
+              />
+            </div>
+          ) : null}
+          {selection && !linkMode && !graphPreviewOpen ? (
+            <div className="absolute inset-y-0 right-0 z-[1200] flex w-80 flex-col border-l border-base-content/10 bg-base-100 shadow-xl">
+              <div className="flex items-center justify-between border-b border-base-content/10 px-3 py-2">
+                <span className="text-sm font-semibold">Details</span>
+                <button
+                  type="button"
+                  className="btn btn-circle btn-ghost btn-xs"
+                  onClick={() => setSelection(null)}
+                  aria-label="Close details panel"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">{detailsPanel}</div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <Group orientation="horizontal" className="min-h-0 flex-1">
+          <Panel defaultSize={34} minSize={24}>
+            <MapExplorerTables
+              db={db}
+              mapId={mapId}
+              mapName={workspace.name}
+              mapPoints={mapPoints}
+              markerNeighbors={markerNeighbors}
+              geoSegments={geoSegments}
+              segmentEdges={segmentEdges}
+              landmarkTypes={landmarkTypes}
+              pendingEventCount={pendingEventCount}
+              localEvents={localEvents}
+              pathSlug={pathSlug}
+              onPathSlugChange={setPathSlug}
+              onSegmentsBuilt={async () => {
+                await queryClient.invalidateQueries({
+                  queryKey: pgliteQueryKeys.segmentEdges(mapId),
+                });
+                await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.localEvents() });
+              }}
+              routePanel={linkComposerPanel}
+            />
+          </Panel>
+          <Separator className="w-1 bg-base-content/10" />
+          <Panel defaultSize={66} minSize={36}>
+            <div className="relative h-full min-h-0">
+              <Group orientation="vertical" className="h-full">
+                <Panel defaultSize={62} minSize={35}>
+                  <div className="relative h-full">
+                    {mapPane}
+                    {graphPreviewOpen ? (
+                      <div
+                        className={`pointer-events-none absolute left-3 z-[1000] max-w-[18rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm ${showNeighborCoverage ? "bottom-12" : "bottom-3"}`}
+                      >
+                        Dashed lines are virtual graph preview edges (not saved).
+                      </div>
+                    ) : null}
+                  </div>
+                </Panel>
+                <Separator className="h-1 bg-base-content/10" />
+                <Panel defaultSize={38} minSize={20}>
+                  <div className="h-full overflow-auto border-t border-base-content/10 bg-base-100/70">
+                    {detailsPanel}
+                  </div>
+                </Panel>
+              </Group>
+              {graphPreviewOpen ? (
+                <div className="absolute inset-y-0 right-0 z-[1150] w-96 shadow-xl">
+                  <MapGraphPreviewPanel
+                    pathGroups={pathGroups}
+                    previews={graphPreviews}
+                    loading={graphPreviewLoading}
+                    error={graphPreviewError}
+                    onReload={reloadGraphPreview}
+                    onClose={closeGraphPreview}
+                  />
+                </div>
+              ) : null}
+            </div>
+          </Panel>
+        </Group>
+      )}
+
+      {statusMessage ? (
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[1500] flex justify-center px-4">
+          <div className="pointer-events-auto flex max-w-lg items-start gap-2 rounded-lg border border-base-content/10 bg-base-100 px-4 py-3 text-sm shadow-lg">
+            <span className="flex-1">{statusMessage}</span>
             <button
               type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                void queryClient.invalidateQueries({ queryKey: ["pglite"] });
-              }}
+              className="btn btn-circle btn-ghost btn-xs"
+              onClick={() => setStatusMessage(null)}
+              aria-label="Dismiss status message"
             >
-              <RefreshCw className="size-3.5" />
+              <X className="size-3.5" />
             </button>
           </div>
         </div>
-      </div>
-
-      <Group
-        orientation="horizontal"
-        className="min-h-0 flex-1 rounded-xl border border-base-content/10"
-      >
-        <Panel defaultSize={34} minSize={24}>
-          <MapExplorerTables
-            db={db}
-            mapId={mapId}
-            mapName={workspace.name}
-            mapPoints={mapPoints}
-            markerNeighbors={markerNeighbors}
-            geoSegments={geoSegments}
-            segmentEdges={segmentEdges}
-            landmarkTypes={landmarkTypes}
-            pendingEventCount={pendingEventCount}
-            localEvents={localEvents}
-            pathSlug={pathSlug}
-            onPathSlugChange={setPathSlug}
-            onSegmentsBuilt={async () => {
-              await queryClient.invalidateQueries({
-                queryKey: pgliteQueryKeys.segmentEdges(mapId),
-              });
-              await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.localEvents() });
-            }}
-            routePanel={
-              <MapLinkComposerPanel
-                mapPoints={mapPoints}
-                linkChain={linkChain}
-                pathSlug={pathSlug}
-                onPathSlugChange={setPathSlug}
-                onAppendToChain={appendLinkChainPoint}
-                onRemoveFromChain={removeLinkChainPointAt}
-                onClearChain={clearLinkChain}
-                isSaving={createChainMutation.isPending}
-                onSaveSegments={() => createChainMutation.mutate({ pointIds: linkChain, pathSlug })}
-                routePlanner={routePlanner}
-              />
-            }
-          />
-        </Panel>
-        <Separator className="w-1 bg-base-content/10" />
-        <Panel defaultSize={66} minSize={36}>
-          <div className="relative h-full min-h-0">
-            <Group orientation="vertical" className="h-full">
-              <Panel defaultSize={62} minSize={35}>
-                <div className="relative h-full">
-                  <LeafletMapPane
-                    workspace={workspace}
-                    geoSegments={geoSegments}
-                    mapPoints={mapPoints}
-                    markerNeighbors={markerNeighbors}
-                    selectedMapPointId={selectedMapPointId}
-                    selectedSegmentId={selectedSegmentId}
-                    placementMode={placementMode}
-                    linkMode={linkMode || routePlanner.pickTarget != null}
-                    linkChainPointIds={linkChain}
-                    linkRouteStartId={routePlanner.startId}
-                    linkRouteEndId={routePlanner.endId}
-                    linkRouteViaIds={routePlanner.viaIds}
-                    showSegments={showSegments}
-                    showNeighborCoverage={showNeighborCoverage}
-                    virtualPreviewEdges={virtualPreviewEdges}
-                    markerIdsWithNeighborLinks={markerIdsWithNeighborLinks}
-                    deadEndMarkerIds={deadEndMarkerIds}
-                    naturalEndpointMarkerIds={naturalEndpointMarkerIds}
-                    onReady={(handle) => {
-                      mapHandleRef.current = handle;
-                    }}
-                    onViewportChange={(viewport) => {
-                      void updateMapWorkspace(db, mapId, {
-                        mapCenterLat: viewport.latitude,
-                        mapCenterLng: viewport.longitude,
-                        mapZoom: viewport.zoom,
-                      });
-                    }}
-                    onMapPointClick={(pointId, modifiers) => {
-                      if (routePlanner.handleMapPointClickForRoutePick(pointId)) {
-                        return;
-                      }
-                      if (linkMode && isPickModifierEvent(modifiers)) {
-                        appendLinkChainPoint(pointId);
-                        return;
-                      }
-                      setSelection({ kind: "map-point", id: pointId });
-                    }}
-                    onMapPointPlace={handleMapPointPlace}
-                    onMapPointMove={(pointId, latitude, longitude) => {
-                      updatePointMutation.mutate({ pointId, latitude, longitude });
-                    }}
-                    onSegmentClick={(segmentId) => {
-                      setSelection({ kind: "segment", id: segmentId });
-                    }}
-                  />
-                  {graphPreviewOpen ? (
-                    <div
-                      className={`pointer-events-none absolute left-3 z-[1000] max-w-[18rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm ${showNeighborCoverage ? "bottom-12" : "bottom-3"}`}
-                    >
-                      Dashed lines are virtual graph preview edges (not saved).
-                    </div>
-                  ) : null}
-                </div>
-              </Panel>
-              <Separator className="h-1 bg-base-content/10" />
-              <Panel defaultSize={38} minSize={20}>
-                <div className="h-full overflow-auto border-t border-base-content/10 bg-base-100/70">
-                  <MapExplorerDetailsPanel
-                    selection={selection}
-                    mapPoints={mapPoints}
-                    markerNeighbors={markerNeighbors}
-                    geoSegments={geoSegments}
-                    segmentEdges={segmentEdges}
-                    isSavingNeighbors={replaceNeighborsMutation.isPending}
-                    onEditPoint={(pointId) => setEditPointId(pointId)}
-                    onReplaceNeighbors={(pointId, toMarkerIds) =>
-                      replaceNeighborsMutation.mutate({ fromMarkerId: pointId, toMarkerIds })
-                    }
-                  />
-                </div>
-              </Panel>
-            </Group>
-            {graphPreviewOpen ? (
-              <div className="absolute inset-y-0 right-0 z-[1150] w-96 shadow-xl">
-                <MapGraphPreviewPanel
-                  pathGroups={pathGroups}
-                  previews={graphPreviews}
-                  loading={graphPreviewLoading}
-                  error={graphPreviewError}
-                  onReload={reloadGraphPreview}
-                  onClose={closeGraphPreview}
-                />
-              </div>
-            ) : null}
-          </div>
-        </Panel>
-      </Group>
+      ) : null}
 
       <MapMarkerCaptureDialog
         draft={captureDraft}

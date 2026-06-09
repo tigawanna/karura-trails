@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { postgis } from "@electric-sql/pglite-postgis";
 import { migrate } from "@proj-airi/drizzle-orm-browser-migrator/pglite";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import migrations from "virtual:drizzle-migrations.sql";
 import * as schema from "@/lib/pglite/schema";
@@ -28,6 +29,7 @@ export function initPgliteDb(): Promise<void> {
   if (!initPromise) {
     initPromise = (async () => {
       await pgliteClient.waitReady;
+      await db.execute(sql`CREATE EXTENSION IF NOT EXISTS postgis`);
       await migrate(db, migrations as BundledMigration[]);
     })();
   }

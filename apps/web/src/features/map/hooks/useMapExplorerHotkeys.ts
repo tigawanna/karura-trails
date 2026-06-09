@@ -12,6 +12,7 @@ type UseMapExplorerHotkeysOptions = {
   selectedMapPointId: number | null;
   pathSlugs: string[];
   onToggleNeighborCoverage: () => void;
+  onToggleHideVirtualMarkers: () => void;
   onToggleSegments: () => void;
   onTogglePlacementMode: () => void;
   onToggleLinkMode: () => void;
@@ -29,6 +30,7 @@ export function useMapExplorerHotkeys({
   linkMode,
   selectedMapPointId,
   onToggleNeighborCoverage,
+  onToggleHideVirtualMarkers,
   onToggleSegments,
   onTogglePlacementMode,
   onToggleLinkMode,
@@ -39,6 +41,14 @@ export function useMapExplorerHotkeys({
   useHotkey(
     asRegisterableHotkey(getShortcut(SHORTCUT_IDS.toggleNeighborCoverage).hotkey),
     onToggleNeighborCoverage,
+    {
+      enabled,
+    },
+  );
+
+  useHotkey(
+    asRegisterableHotkey(getShortcut(SHORTCUT_IDS.toggleHideVirtualMarkers).hotkey),
+    onToggleHideVirtualMarkers,
     {
       enabled,
     },

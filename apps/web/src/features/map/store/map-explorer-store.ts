@@ -10,6 +10,7 @@ type MapExplorerStore = {
   linkChain: number[];
   showNeighborCoverage: boolean;
   showSegments: boolean;
+  hideVirtualMarkers: boolean;
   graphPreviewOpen: boolean;
   graphPreviewVisibleSlugs: string[];
   statusMessage: string | null;
@@ -25,6 +26,7 @@ type MapExplorerStore = {
   clearLinkChain: () => void;
   setShowNeighborCoverage: (value: boolean) => void;
   setShowSegments: (value: boolean) => void;
+  setHideVirtualMarkers: (value: boolean) => void;
   openGraphPreview: (pathSlugs: string[]) => void;
   closeGraphPreview: () => void;
   toggleGraphPreviewSlug: (pathSlug: string) => void;
@@ -42,6 +44,7 @@ const initialState = {
   linkChain: [] as number[],
   showNeighborCoverage: true,
   showSegments: true,
+  hideVirtualMarkers: false,
   graphPreviewOpen: false,
   graphPreviewVisibleSlugs: [] as string[],
   statusMessage: null as string | null,
@@ -79,6 +82,7 @@ export const useMapExplorerStore = create<MapExplorerStore>((set) => ({
   clearLinkChain: () => set({ linkChain: [] }),
   setShowNeighborCoverage: (showNeighborCoverage) => set({ showNeighborCoverage }),
   setShowSegments: (showSegments) => set({ showSegments }),
+  setHideVirtualMarkers: (hideVirtualMarkers) => set({ hideVirtualMarkers }),
   openGraphPreview: (pathSlugs) =>
     set({
       graphPreviewOpen: true,

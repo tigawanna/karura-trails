@@ -3,6 +3,7 @@ import type { MapTipItem, ShortcutDefinition } from "@/lib/shortcuts/types";
 export const SHORTCUT_IDS = {
   showKeyboardShortcuts: "show-keyboard-shortcuts",
   toggleNeighborCoverage: "toggle-neighbor-coverage",
+  toggleHideVirtualMarkers: "toggle-hide-virtual-markers",
   toggleSegments: "toggle-segments",
   togglePlacementMode: "toggle-placement-mode",
   toggleLinkMode: "toggle-link-mode",
@@ -32,6 +33,12 @@ export const SHORTCUT_CATALOG: readonly ShortcutDefinition[] = [
     SHORTCUT_IDS.toggleNeighborCoverage,
     "Mod+Shift+N",
     "Toggle neighbor coverage overlay",
+    ["mapWorkspace"],
+  ),
+  defineShortcut(
+    SHORTCUT_IDS.toggleHideVirtualMarkers,
+    "Mod+Shift+V",
+    "Toggle virtual marker visibility",
     ["mapWorkspace"],
   ),
   defineShortcut(SHORTCUT_IDS.toggleSegments, "Mod+Shift+S", "Toggle trail segments overlay", [
