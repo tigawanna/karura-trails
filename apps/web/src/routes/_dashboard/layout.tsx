@@ -1,9 +1,12 @@
+import { MainLoader } from "@/components/wrappers/MainLoader";
 import { isAdminUser, viewerMiddleware } from "@/data-access-layer/auth/viewer";
 import { RouterNotFoundComponent } from "@/lib/tanstack/router/RouterNotFoundComponent";
 import { RouterPendingComponent } from "@/lib/tanstack/router/RouterPendingComponent";
 import { RouterErrorComponent } from "@/lib/tanstack/router/routerErrorComponent";
 import { AppConfig } from "@/utils/system";
 import { createFileRoute, redirect } from "@tanstack/react-router";
+import { Suspense } from "react";
+import { DashboardPgliteShell } from "./-components/DashboardPgliteShell.client";
 import { DashboardLayout } from "./-components/dashboard-sidebar/DashboardLayout";
 import {
   dashboard_account_routes,
@@ -35,13 +38,17 @@ export const Route = createFileRoute("/_dashboard")({
 
 function DashboardShell() {
   return (
-    <DashboardLayout
-      sidebarRoutes={getDashboardPrimaryRoutes()}
-      sidebarLabel="Menu"
-      accountRoutes={dashboard_account_routes}
-      accountLabel="Account"
-      adminRoutes={dashboard_admin_routes}
-      adminLabel="Administration"
-    />
+    <Suspense fallback={<MainLoader />}>
+      <DashboardPgliteShell>
+        <DashboardLayout
+          sidebarRoutes={getDashboardPrimaryRoutes()}
+          sidebarLabel="Menu"
+          accountRoutes={dashboard_account_routes}
+          accountLabel="Account"
+          adminRoutes={dashboard_admin_routes}
+          adminLabel="Administration"
+        />
+      </DashboardPgliteShell>
+    </Suspense>
   );
 }
