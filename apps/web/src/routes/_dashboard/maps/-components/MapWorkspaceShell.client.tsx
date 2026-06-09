@@ -3,38 +3,25 @@ import { MapExplorerPage } from "@/features/map/components/MapExplorerPage";
 import { useDashboardMap } from "@/routes/_dashboard/-components/DashboardPgliteShell.client";
 import { MainLoader } from "@/components/wrappers/MainLoader";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 export default function MapWorkspaceShell() {
-  const { mapId: defaultMapId, mapInitError } = useDashboardMap();
+  const { mapId: canonicalMapId, mapInitError } = useDashboardMap();
   const navigate = useNavigate();
-  const params = useParams({ strict: false });
-  const mapIdParam = params.mapId;
-  const [mapId, setMapId] = useState<number | null>(null);
+  const mapIdParam = useParams({ strict: false }).mapId;
 
   useEffect(() => {
-    if (defaultMapId == null) {
+    if (canonicalMapId == null) {
       return;
     }
-    if (mapIdParam == null) {
+    if (mapIdParam !== String(canonicalMapId)) {
       void navigate({
         to: "/maps/$mapId",
-        params: { mapId: String(defaultMapId) },
+        params: { mapId: String(canonicalMapId) },
         replace: true,
       });
-      return;
     }
-    const parsed = Number(mapIdParam);
-    if (!Number.isFinite(parsed)) {
-      void navigate({
-        to: "/maps/$mapId",
-        params: { mapId: String(defaultMapId) },
-        replace: true,
-      });
-      return;
-    }
-    setMapId(parsed);
-  }, [defaultMapId, mapIdParam, navigate]);
+  }, [canonicalMapId, mapIdParam, navigate]);
 
   if (mapInitError) {
     return (
@@ -44,13 +31,13 @@ export default function MapWorkspaceShell() {
     );
   }
 
-  if (mapId == null) {
+  if (canonicalMapId == null || mapIdParam !== String(canonicalMapId)) {
     return <MainLoader />;
   }
 
   return (
     <KeyboardShortcutsProvider>
-      <MapExplorerPage mapId={mapId} variant="workspace" />
+      <MapExplorerPage mapId={canonicalMapId} variant="workspace" />
     </KeyboardShortcutsProvider>
   );
 }
