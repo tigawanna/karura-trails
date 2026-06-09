@@ -1,11 +1,19 @@
-import type { SyncEventRecord, SyncPullResponse } from "@/types/sync";
+import type { SyncEventsListResponse, SyncEventRecord, SyncPullResponse } from "@/types/sync";
 
-export interface SyncEventsListResponse {
-  events: SyncEventRecord[];
-}
-
-export async function fetchAdminSyncEvents(): Promise<SyncEventsListResponse> {
-  const response = await fetch("/api/sync/events?includeUnverified=true&limit=100", {
+export async function fetchAdminSyncEvents(
+  after?: string | null,
+  page = 1,
+  limit = 100,
+): Promise<SyncEventsListResponse> {
+  const params = new URLSearchParams({
+    includeUnverified: "true",
+    limit: String(limit),
+    page: String(page),
+  });
+  if (after) {
+    params.set("after", after);
+  }
+  const response = await fetch(`/api/sync/events?${params.toString()}`, {
     credentials: "include",
   });
 
@@ -16,8 +24,15 @@ export async function fetchAdminSyncEvents(): Promise<SyncEventsListResponse> {
   return response.json() as Promise<SyncEventsListResponse>;
 }
 
-export async function fetchSyncEventsPull(after?: string | null): Promise<SyncPullResponse> {
-  const params = new URLSearchParams({ limit: "100" });
+export async function fetchSyncEventsPull(
+  after?: string | null,
+  page = 1,
+  limit = 100,
+): Promise<SyncPullResponse> {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    page: String(page),
+  });
   if (after) {
     params.set("after", after);
   }
@@ -30,6 +45,14 @@ export async function fetchSyncEventsPull(after?: string | null): Promise<SyncPu
   return response.json() as Promise<SyncPullResponse>;
 }
 
+export async function fetchUpstreamSyncEventsPreview(
+  after?: string | null,
+  page = 1,
+  limit = 100,
+): Promise<SyncEventsListResponse> {
+  return fetchSyncEventsPull(after, page, limit);
+}
+
 export async function verifySyncEvent(eventId: string): Promise<void> {
   const response = await fetch(`/api/sync/events/${eventId}/verify`, {
     method: "PATCH",
@@ -39,4 +62,8 @@ export async function verifySyncEvent(eventId: string): Promise<void> {
   if (!response.ok) {
     throw new Error("Failed to verify event");
   }
+}
+
+export function parseSyncEventPayload(event: SyncEventRecord): Record<string, unknown> {
+  return JSON.parse(event.payloadJson) as Record<string, unknown>;
 }

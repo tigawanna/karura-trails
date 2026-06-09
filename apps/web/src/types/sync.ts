@@ -25,6 +25,22 @@ export interface SyncPullResponse {
   events: SyncEventRecord[];
   hasMore: boolean;
   nextCursor: string | null;
+  page: number;
+  perPage: number;
+  totalCount: number;
+  totalPages: number;
+  remainingCount: number;
+}
+
+export interface SyncEventsListResponse {
+  events: SyncEventRecord[];
+  page: number;
+  perPage: number;
+  totalCount: number;
+  totalPages: number;
+  remainingCount: number;
+  hasMore: boolean;
+  nextCursor: string | null;
 }
 
 export interface SyncEventRecord {

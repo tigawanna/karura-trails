@@ -2,6 +2,7 @@ import { mapLandmarkTypeTable } from "@/lib/pglite/schema/map-landmark-type.sche
 import { markerNeighborTable } from "@/lib/pglite/schema/marker-neighbor.schema";
 import { mapPointTable } from "@/lib/pglite/schema/map-point.schema";
 import { mapTable } from "@/lib/pglite/schema/map.schema";
+import { markSyncEventsApplied } from "@/data-access-layer/pglite/applied-sync-events";
 import { updateMapWorkspace } from "@/data-access-layer/pglite/maps";
 import type { PgliteDb } from "@/lib/pglite/client";
 import type { MapPointCategory, MapPointNodeRole, MapPointRecord } from "@/types/map/map-points";
@@ -274,6 +275,7 @@ async function applyMapUpdate(db: PgliteDb, mapId: number, payload: Record<strin
 export async function applySyncEvents(db: PgliteDb, mapId: number, events: SyncEventRecord[]) {
   const verified = events.filter((event) => event.verified);
   const sourceMarkerMap = await buildSourceMarkerMap(db, mapId);
+  const skippedIds = new Set<string>();
   let applied = 0;
 
   const sorted = [...verified].sort((left, right) => left.id.localeCompare(right.id));
@@ -300,10 +302,14 @@ export async function applySyncEvents(db: PgliteDb, mapId: number, events: SyncE
 
     if (didApply) {
       applied += 1;
+    } else {
+      skippedIds.add(event.id);
     }
   }
 
-  return { applied, total: verified.length };
+  await markSyncEventsApplied(db, sorted, skippedIds);
+
+  return { applied, total: verified.length, skipped: skippedIds.size };
 }
 
 export async function squashApprovedSyncEvents(

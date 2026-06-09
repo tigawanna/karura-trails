@@ -14,7 +14,10 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { QueryActivityNprogress } from "@/components/navigation/nprogress/QueryActivityNprogress";
+import { SyncActivityNprogress } from "@/components/navigation/nprogress/SyncActivityNprogress";
+import { SyncActivityHeaderBadge } from "@/features/sync/components/SyncActivityHeaderBadge";
 import { TSRBreadCrumbs } from "@/lib/tanstack/router/TSRBreadCrumbs";
+import { isAdminUser, useViewer } from "@/data-access-layer/auth/viewer";
 import { AppConfig } from "@/utils/system";
 import { Outlet, useRouterState } from "@tanstack/react-router";
 import { DashboardSidebarFooter } from "./DashboardSidebarFooter";
@@ -37,6 +40,8 @@ export function DashboardLayout({
   adminRoutes,
   adminLabel,
 }: DashboardLayoutProps) {
+  const { viewer } = useViewer();
+  const visibleAdminRoutes = isAdminUser(viewer.user) ? adminRoutes : [];
   const isMapWorkspace = useRouterState({
     select: (state) => {
       const path = state.location.pathname;
@@ -47,6 +52,7 @@ export function DashboardLayout({
   return (
     <SidebarProvider defaultOpen={false} className="h-svh overflow-hidden">
       <QueryActivityNprogress />
+      <SyncActivityNprogress />
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <DashboardSidebarHeader />
@@ -66,12 +72,12 @@ export function DashboardLayout({
               <SidebarLinks links={accountRoutes} />
             </SidebarGroup>
           ) : null}
-          {adminRoutes.length > 0 ? (
+          {visibleAdminRoutes.length > 0 ? (
             <SidebarGroup className="bg-base-300">
               <SidebarGroupLabel className="text-sm font-semibold tracking-wide">
                 {adminLabel}
               </SidebarGroupLabel>
-              <SidebarLinks links={adminRoutes} />
+              <SidebarLinks links={visibleAdminRoutes} />
             </SidebarGroup>
           ) : null}
         </SidebarContent>
@@ -93,7 +99,10 @@ export function DashboardLayout({
                 <Separator orientation="vertical" className="mr-2 h-4" />
                 <TSRBreadCrumbs />
               </div>
-              <div className="ml-auto px-4 text-sm text-base-content/60">{AppConfig.name}</div>
+              <div className="ml-auto flex items-center gap-3 px-4">
+                <SyncActivityHeaderBadge />
+                <span className="text-sm text-base-content/60">{AppConfig.name}</span>
+              </div>
             </header>
             <div className="@container/main flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-auto p-6">
               <Outlet />

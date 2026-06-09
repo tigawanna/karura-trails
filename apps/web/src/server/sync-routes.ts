@@ -8,7 +8,7 @@ import type {
   SyncPushRequest,
   SyncPushResponse,
 } from "@/types/sync";
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, count, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
 
 const PUSH_BATCH_LIMIT = 50;
@@ -92,10 +92,15 @@ export const syncRoutes = new Hono<{ Bindings: CloudflareBindings }>()
   .get("/events", async (c) => {
     const auth = getAuth();
     const after = c.req.query("after");
+    const pageParam = Number(c.req.query("page") ?? "1");
     const limit = Math.min(Number(c.req.query("limit") ?? PULL_BATCH_LIMIT), PULL_BATCH_LIMIT);
     const includeUnverified = c.req.query("includeUnverified") === "true";
     const session = await auth.api.getSession({ headers: c.req.raw.headers });
     const isAdmin = session?.user?.role === "admin";
+
+    if (!session?.user) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
 
     const conditions = [];
     if (after) {
@@ -105,22 +110,35 @@ export const syncRoutes = new Hono<{ Bindings: CloudflareBindings }>()
       conditions.push(eq(syncEvents.verified, true));
     }
 
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     const db = createDb(c.env.DB);
+
+    const [totalRow] = await db.select({ total: count() }).from(syncEvents).where(whereClause);
+    const totalCount = totalRow?.total ?? 0;
+    const totalPages = totalCount === 0 ? 0 : Math.ceil(totalCount / limit);
+    const page = Number.isFinite(pageParam) && pageParam > 0 ? Math.floor(pageParam) : 1;
+
     const rows = await db
       .select()
       .from(syncEvents)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .where(whereClause)
       .orderBy(asc(syncEvents.id))
       .limit(limit + 1);
 
     const hasMore = rows.length > limit;
-    const page = hasMore ? rows.slice(0, limit) : rows;
-    const nextCursor = hasMore ? (page[page.length - 1]?.id ?? null) : null;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const nextCursor = hasMore ? (items[items.length - 1]?.id ?? null) : null;
+    const remainingCount = Math.max(0, totalCount - items.length);
 
     const response: SyncPullResponse = {
-      events: page.map(mapRow),
+      events: items.map(mapRow),
       hasMore,
       nextCursor,
+      page,
+      perPage: limit,
+      totalCount,
+      totalPages,
+      remainingCount,
     };
 
     return c.json(response);

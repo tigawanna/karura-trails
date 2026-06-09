@@ -1,11 +1,10 @@
-import { applySyncEvents } from "@/lib/sync/apply-sync-events";
-import { readSyncPullCursor, writeSyncPullCursor } from "@/lib/sync/sync-cursor";
+import { pullSyncEvents } from "@/lib/sync/pull-sync-events";
+import { useSyncActivityStore } from "@/lib/sync/sync-activity-store";
 import type { PgliteDb } from "@/lib/pglite/client";
-import type { SyncEventRecord } from "@/types/sync";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
-const POLL_INTERVAL_MS = 300_000; // 300 seconds = 5 minutes
+const POLL_INTERVAL_MS = 30_000;
 
 type UseSyncEventsPollerOptions = {
   db: PgliteDb | null;
@@ -15,48 +14,40 @@ type UseSyncEventsPollerOptions = {
 
 export function useSyncEventsPoller({ db, mapId, enabled = true }: UseSyncEventsPollerOptions) {
   const queryClient = useQueryClient();
-  const workerRef = useRef<Worker | null>(null);
+  const registerTrigger = useSyncActivityStore((state) => state.registerTrigger);
+  const runningRef = useRef(false);
+
+  const runSync = useCallback(async () => {
+    if (runningRef.current || db == null || mapId == null) {
+      return;
+    }
+    runningRef.current = true;
+    try {
+      await pullSyncEvents({ db, mapId, queryClient });
+    } catch {
+      return;
+    } finally {
+      runningRef.current = false;
+    }
+  }, [db, mapId, queryClient]);
 
   useEffect(() => {
-    if (!enabled || db == null || mapId == null || typeof Worker === "undefined") {
+    registerTrigger(runSync);
+    return () => registerTrigger(null);
+  }, [registerTrigger, runSync]);
+
+  useEffect(() => {
+    if (!enabled || db == null || mapId == null) {
       return;
     }
 
-    const worker = new Worker(new URL("../workers/sync-events-poller.worker.ts", import.meta.url), {
-      type: "module",
-    });
-    workerRef.current = worker;
-
-    worker.onmessage = (event: MessageEvent) => {
-      const message = event.data as
-        | { type: "events"; events: SyncEventRecord[]; nextCursor: string | null }
-        | { type: "error"; message: string };
-
-      if (message.type === "error") {
-        return;
-      }
-
-      void (async () => {
-        const result = await applySyncEvents(db, mapId, message.events);
-        if (message.nextCursor) {
-          writeSyncPullCursor(message.nextCursor);
-        }
-        if (result.applied > 0) {
-          await queryClient.invalidateQueries({ queryKey: ["pglite"] });
-        }
-      })();
-    };
-
-    worker.postMessage({
-      type: "start",
-      cursor: readSyncPullCursor(),
-      intervalMs: POLL_INTERVAL_MS,
-    });
+    void runSync();
+    const timer = window.setInterval(() => {
+      void runSync();
+    }, POLL_INTERVAL_MS);
 
     return () => {
-      worker.postMessage({ type: "stop" });
-      worker.terminate();
-      workerRef.current = null;
+      window.clearInterval(timer);
     };
-  }, [db, enabled, mapId, queryClient]);
+  }, [db, enabled, mapId, runSync]);
 }

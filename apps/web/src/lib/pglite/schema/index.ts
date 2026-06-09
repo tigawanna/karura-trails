@@ -1,3 +1,4 @@
+export * from "@/lib/pglite/schema/applied-sync-event.schema";
 export * from "@/lib/pglite/schema/geo-segment.schema";
 export * from "@/lib/pglite/schema/local-event.schema";
 export * from "@/lib/pglite/schema/map-landmark-type.schema";

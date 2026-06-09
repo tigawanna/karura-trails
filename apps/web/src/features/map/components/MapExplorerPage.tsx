@@ -47,8 +47,8 @@ import {
 import { toMapPointPlacementSource } from "@/lib/map/suggest-insert-between-marker-name";
 import { buildMapBootstrapExport, downloadJsonExport } from "@/features/map/lib/export-bootstrap";
 import { flushLocalEventsToSync } from "@/features/map/lib/flush-local-events";
-import { applySyncEvents } from "@/lib/sync/apply-sync-events";
-import { fetchAdminSyncEvents } from "@/services/sync/sync.api";
+import { SyncActivityHeaderBadge } from "@/features/sync/components/SyncActivityHeaderBadge";
+import { useSyncActivityStore } from "@/lib/sync/sync-activity-store";
 import { useMapExplorerStore } from "@/features/map/store/map-explorer-store";
 import {
   buildDeadEndMarkerIds,
@@ -204,17 +204,16 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
     },
   });
 
+  const requestSyncNow = useSyncActivityStore((state) => state.requestSyncNow);
+
   const squashMutation = useMutation({
-    mutationFn: async () => {
-      const response = await fetchAdminSyncEvents();
-      return applySyncEvents(db, mapId, response.events);
-    },
-    onSuccess: async (result) => {
+    mutationFn: async () => requestSyncNow(),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.mapPoints(mapId) });
-      toast.success(`Squashed ${result.applied} of ${result.total} approved event(s).`);
+      toast.success("Verified events synced.");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to squash approved events.");
+      toast.error(error instanceof Error ? error.message : "Failed to start sync.");
     },
   });
 
@@ -611,8 +610,9 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
         >
           <ArrowLeft className="size-4" />
         </Link>
-        <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <h1 className="truncate text-sm font-semibold">{workspace.name}</h1>
+          <SyncActivityHeaderBadge />
         </div>
         {isWorkspace ? (
           <Link to="/map" className="btn gap-1.5 btn-ghost btn-sm" data-test="open-data-explorer">

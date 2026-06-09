@@ -1,5 +1,5 @@
 import { MainLoader } from "@/components/wrappers/MainLoader";
-import { isAdminUser, viewerMiddleware } from "@/data-access-layer/auth/viewer";
+import { viewerMiddleware } from "@/data-access-layer/auth/viewer";
 import { RouterNotFoundComponent } from "@/lib/tanstack/router/RouterNotFoundComponent";
 import { RouterPendingComponent } from "@/lib/tanstack/router/RouterPendingComponent";
 import { RouterErrorComponent } from "@/lib/tanstack/router/routerErrorComponent";
@@ -23,7 +23,7 @@ export const Route = createFileRoute("/_dashboard")({
   },
   component: DashboardShell,
   beforeLoad: ({ context }) => {
-    if (!isAdminUser(context.viewer?.user)) {
+    if (!context.viewer?.user) {
       throw redirect({ to: "/auth", search: { returnTo: "/dashboard" } });
     }
   },

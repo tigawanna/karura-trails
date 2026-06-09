@@ -16,12 +16,14 @@ import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as DashboardMapsLayoutRouteImport } from './routes/_dashboard/maps/layout'
 import { Route as DashboardMapLayoutRouteImport } from './routes/_dashboard/map/layout'
+import { Route as DashboardSyncIndexRouteImport } from './routes/_dashboard/sync/index'
 import { Route as DashboardMapsIndexRouteImport } from './routes/_dashboard/maps/index'
 import { Route as DashboardMapIndexRouteImport } from './routes/_dashboard/map/index'
-import { Route as DashboardEventsIndexRouteImport } from './routes/_dashboard/events/index'
 import { Route as DashboardDashboardIndexRouteImport } from './routes/_dashboard/dashboard/index'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as DashboardAdminRouteRouteImport } from './routes/_dashboard/admin/route'
 import { Route as DashboardMapsMapIdIndexRouteImport } from './routes/_dashboard/maps/$mapId/index'
+import { Route as DashboardAdminEventsIndexRouteImport } from './routes/_dashboard/admin/events/index'
 
 const AuthLayoutRoute = AuthLayoutRouteImport.update({
   id: '/auth',
@@ -57,6 +59,11 @@ const DashboardMapLayoutRoute = DashboardMapLayoutRouteImport.update({
   path: '/map',
   getParentRoute: () => DashboardLayoutRoute,
 } as any)
+const DashboardSyncIndexRoute = DashboardSyncIndexRouteImport.update({
+  id: '/sync/',
+  path: '/sync/',
+  getParentRoute: () => DashboardLayoutRoute,
+} as any)
 const DashboardMapsIndexRoute = DashboardMapsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -66,11 +73,6 @@ const DashboardMapIndexRoute = DashboardMapIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardMapLayoutRoute,
-} as any)
-const DashboardEventsIndexRoute = DashboardEventsIndexRouteImport.update({
-  id: '/events/',
-  path: '/events/',
-  getParentRoute: () => DashboardLayoutRoute,
 } as any)
 const DashboardDashboardIndexRoute = DashboardDashboardIndexRouteImport.update({
   id: '/dashboard/',
@@ -82,11 +84,22 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardAdminRouteRoute = DashboardAdminRouteRouteImport.update({
+  id: '/admin/route',
+  path: '/admin/route',
+  getParentRoute: () => DashboardLayoutRoute,
+} as any)
 const DashboardMapsMapIdIndexRoute = DashboardMapsMapIdIndexRouteImport.update({
   id: '/$mapId/',
   path: '/$mapId/',
   getParentRoute: () => DashboardMapsLayoutRoute,
 } as any)
+const DashboardAdminEventsIndexRoute =
+  DashboardAdminEventsIndexRouteImport.update({
+    id: '/admin/events/',
+    path: '/admin/events/',
+    getParentRoute: () => DashboardLayoutRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -95,22 +108,26 @@ export interface FileRoutesByFullPath {
   '/maps': typeof DashboardMapsLayoutRouteWithChildren
   '/auth/signup': typeof AuthSignupRoute
   '/auth/': typeof AuthIndexRoute
+  '/admin/route': typeof DashboardAdminRouteRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard/': typeof DashboardDashboardIndexRoute
-  '/events/': typeof DashboardEventsIndexRoute
   '/map/': typeof DashboardMapIndexRoute
   '/maps/': typeof DashboardMapsIndexRoute
+  '/sync/': typeof DashboardSyncIndexRoute
+  '/admin/events/': typeof DashboardAdminEventsIndexRoute
   '/maps/$mapId/': typeof DashboardMapsMapIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth/signup': typeof AuthSignupRoute
   '/auth': typeof AuthIndexRoute
+  '/admin/route': typeof DashboardAdminRouteRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/dashboard': typeof DashboardDashboardIndexRoute
-  '/events': typeof DashboardEventsIndexRoute
   '/map': typeof DashboardMapIndexRoute
   '/maps': typeof DashboardMapsIndexRoute
+  '/sync': typeof DashboardSyncIndexRoute
+  '/admin/events': typeof DashboardAdminEventsIndexRoute
   '/maps/$mapId': typeof DashboardMapsMapIdIndexRoute
 }
 export interface FileRoutesById {
@@ -122,11 +139,13 @@ export interface FileRoutesById {
   '/_dashboard/maps': typeof DashboardMapsLayoutRouteWithChildren
   '/auth/signup': typeof AuthSignupRoute
   '/auth/': typeof AuthIndexRoute
+  '/_dashboard/admin/route': typeof DashboardAdminRouteRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/_dashboard/dashboard/': typeof DashboardDashboardIndexRoute
-  '/_dashboard/events/': typeof DashboardEventsIndexRoute
   '/_dashboard/map/': typeof DashboardMapIndexRoute
   '/_dashboard/maps/': typeof DashboardMapsIndexRoute
+  '/_dashboard/sync/': typeof DashboardSyncIndexRoute
+  '/_dashboard/admin/events/': typeof DashboardAdminEventsIndexRoute
   '/_dashboard/maps/$mapId/': typeof DashboardMapsMapIdIndexRoute
 }
 export interface FileRouteTypes {
@@ -138,22 +157,26 @@ export interface FileRouteTypes {
     | '/maps'
     | '/auth/signup'
     | '/auth/'
+    | '/admin/route'
     | '/api/auth/$'
     | '/dashboard/'
-    | '/events/'
     | '/map/'
     | '/maps/'
+    | '/sync/'
+    | '/admin/events/'
     | '/maps/$mapId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth/signup'
     | '/auth'
+    | '/admin/route'
     | '/api/auth/$'
     | '/dashboard'
-    | '/events'
     | '/map'
     | '/maps'
+    | '/sync'
+    | '/admin/events'
     | '/maps/$mapId'
   id:
     | '__root__'
@@ -164,11 +187,13 @@ export interface FileRouteTypes {
     | '/_dashboard/maps'
     | '/auth/signup'
     | '/auth/'
+    | '/_dashboard/admin/route'
     | '/api/auth/$'
     | '/_dashboard/dashboard/'
-    | '/_dashboard/events/'
     | '/_dashboard/map/'
     | '/_dashboard/maps/'
+    | '/_dashboard/sync/'
+    | '/_dashboard/admin/events/'
     | '/_dashboard/maps/$mapId/'
   fileRoutesById: FileRoutesById
 }
@@ -230,6 +255,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardMapLayoutRouteImport
       parentRoute: typeof DashboardLayoutRoute
     }
+    '/_dashboard/sync/': {
+      id: '/_dashboard/sync/'
+      path: '/sync'
+      fullPath: '/sync/'
+      preLoaderRoute: typeof DashboardSyncIndexRouteImport
+      parentRoute: typeof DashboardLayoutRoute
+    }
     '/_dashboard/maps/': {
       id: '/_dashboard/maps/'
       path: '/'
@@ -243,13 +275,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/map/'
       preLoaderRoute: typeof DashboardMapIndexRouteImport
       parentRoute: typeof DashboardMapLayoutRoute
-    }
-    '/_dashboard/events/': {
-      id: '/_dashboard/events/'
-      path: '/events'
-      fullPath: '/events/'
-      preLoaderRoute: typeof DashboardEventsIndexRouteImport
-      parentRoute: typeof DashboardLayoutRoute
     }
     '/_dashboard/dashboard/': {
       id: '/_dashboard/dashboard/'
@@ -265,12 +290,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_dashboard/admin/route': {
+      id: '/_dashboard/admin/route'
+      path: '/admin/route'
+      fullPath: '/admin/route'
+      preLoaderRoute: typeof DashboardAdminRouteRouteImport
+      parentRoute: typeof DashboardLayoutRoute
+    }
     '/_dashboard/maps/$mapId/': {
       id: '/_dashboard/maps/$mapId/'
       path: '/$mapId'
       fullPath: '/maps/$mapId/'
       preLoaderRoute: typeof DashboardMapsMapIdIndexRouteImport
       parentRoute: typeof DashboardMapsLayoutRoute
+    }
+    '/_dashboard/admin/events/': {
+      id: '/_dashboard/admin/events/'
+      path: '/admin/events'
+      fullPath: '/admin/events/'
+      preLoaderRoute: typeof DashboardAdminEventsIndexRouteImport
+      parentRoute: typeof DashboardLayoutRoute
     }
   }
 }
@@ -302,15 +341,19 @@ const DashboardMapsLayoutRouteWithChildren =
 interface DashboardLayoutRouteChildren {
   DashboardMapLayoutRoute: typeof DashboardMapLayoutRouteWithChildren
   DashboardMapsLayoutRoute: typeof DashboardMapsLayoutRouteWithChildren
+  DashboardAdminRouteRoute: typeof DashboardAdminRouteRoute
   DashboardDashboardIndexRoute: typeof DashboardDashboardIndexRoute
-  DashboardEventsIndexRoute: typeof DashboardEventsIndexRoute
+  DashboardSyncIndexRoute: typeof DashboardSyncIndexRoute
+  DashboardAdminEventsIndexRoute: typeof DashboardAdminEventsIndexRoute
 }
 
 const DashboardLayoutRouteChildren: DashboardLayoutRouteChildren = {
   DashboardMapLayoutRoute: DashboardMapLayoutRouteWithChildren,
   DashboardMapsLayoutRoute: DashboardMapsLayoutRouteWithChildren,
+  DashboardAdminRouteRoute: DashboardAdminRouteRoute,
   DashboardDashboardIndexRoute: DashboardDashboardIndexRoute,
-  DashboardEventsIndexRoute: DashboardEventsIndexRoute,
+  DashboardSyncIndexRoute: DashboardSyncIndexRoute,
+  DashboardAdminEventsIndexRoute: DashboardAdminEventsIndexRoute,
 }
 
 const DashboardLayoutRouteWithChildren = DashboardLayoutRoute._addFileChildren(
