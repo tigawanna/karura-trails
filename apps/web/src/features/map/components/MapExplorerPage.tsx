@@ -629,12 +629,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
             Data explorer
           </Link>
         ) : (
-          <Link
-            to="/maps/$mapId"
-            params={{ mapId: String(mapId) }}
-            className="btn gap-1.5 btn-ghost btn-sm"
-            data-test="open-map-workspace"
-          >
+          <Link to="/maps" className="btn gap-1.5 btn-ghost btn-sm" data-test="open-map-workspace">
             <ExternalLink className="size-3.5" />
             Full map
           </Link>

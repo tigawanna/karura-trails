@@ -3,9 +3,13 @@ import {
   KARURA_MAP_NAME,
   KARURA_MAP_VIEWPORT,
 } from "@/lib/map/karura-map-defaults";
-import { mapTable } from "@/lib/pglite/schema/map.schema";
 import type { PgliteDb } from "@/lib/pglite/client";
-import { eq } from "drizzle-orm";
+import { mapTable } from "@/lib/pglite/schema/map.schema";
+import { eq, ne } from "drizzle-orm";
+
+async function consolidateToKaruraMap(db: PgliteDb, karuraMapId: number) {
+  await db.delete(mapTable).where(ne(mapTable.id, karuraMapId));
+}
 
 export async function ensureKaruraMap(db: PgliteDb): Promise<number> {
   const [existing] = await db
@@ -13,6 +17,8 @@ export async function ensureKaruraMap(db: PgliteDb): Promise<number> {
     .from(mapTable)
     .where(eq(mapTable.name, KARURA_MAP_NAME))
     .limit(1);
+
+  let karuraMapId: number;
 
   if (existing) {
     const needsCenter =
@@ -34,25 +40,29 @@ export async function ensureKaruraMap(db: PgliteDb): Promise<number> {
         .where(eq(mapTable.id, existing.id));
     }
 
-    return existing.id;
+    karuraMapId = existing.id;
+  } else {
+    const [created] = await db
+      .insert(mapTable)
+      .values({
+        name: KARURA_MAP_NAME,
+        description: "Karura Forest trail network",
+        locationQuery: KARURA_LOCATION_QUERY,
+        mapCenterLat: KARURA_MAP_VIEWPORT.latitude,
+        mapCenterLng: KARURA_MAP_VIEWPORT.longitude,
+        mapZoom: KARURA_MAP_VIEWPORT.zoom,
+        baseMapStyle: "standard",
+      })
+      .returning({ id: mapTable.id });
+
+    if (!created) {
+      throw new Error("Failed to create Karura map.");
+    }
+
+    karuraMapId = created.id;
   }
 
-  const [created] = await db
-    .insert(mapTable)
-    .values({
-      name: KARURA_MAP_NAME,
-      description: "Karura Forest trail network",
-      locationQuery: KARURA_LOCATION_QUERY,
-      mapCenterLat: KARURA_MAP_VIEWPORT.latitude,
-      mapCenterLng: KARURA_MAP_VIEWPORT.longitude,
-      mapZoom: KARURA_MAP_VIEWPORT.zoom,
-      baseMapStyle: "standard",
-    })
-    .returning({ id: mapTable.id });
+  await consolidateToKaruraMap(db, karuraMapId);
 
-  if (!created) {
-    throw new Error("Failed to create Karura map.");
-  }
-
-  return created.id;
+  return karuraMapId;
 }

@@ -2,26 +2,9 @@ import { KeyboardShortcutsProvider } from "@/features/map/components/KeyboardSho
 import { MapExplorerPage } from "@/features/map/components/MapExplorerPage";
 import { useDashboardMap } from "@/routes/_dashboard/-components/DashboardPgliteShell.client";
 import { MainLoader } from "@/components/wrappers/MainLoader";
-import { useNavigate, useParams } from "@tanstack/react-router";
-import { useEffect } from "react";
 
 export default function MapWorkspaceShell() {
-  const { mapId: canonicalMapId, mapInitError } = useDashboardMap();
-  const navigate = useNavigate();
-  const mapIdParam = useParams({ strict: false }).mapId;
-
-  useEffect(() => {
-    if (canonicalMapId == null) {
-      return;
-    }
-    if (mapIdParam !== String(canonicalMapId)) {
-      void navigate({
-        to: "/maps/$mapId",
-        params: { mapId: String(canonicalMapId) },
-        replace: true,
-      });
-    }
-  }, [canonicalMapId, mapIdParam, navigate]);
+  const { mapId, mapInitError } = useDashboardMap();
 
   if (mapInitError) {
     return (
@@ -31,13 +14,13 @@ export default function MapWorkspaceShell() {
     );
   }
 
-  if (canonicalMapId == null || mapIdParam !== String(canonicalMapId)) {
+  if (mapId == null) {
     return <MainLoader />;
   }
 
   return (
     <KeyboardShortcutsProvider>
-      <MapExplorerPage mapId={canonicalMapId} variant="workspace" />
+      <MapExplorerPage mapId={mapId} variant="workspace" />
     </KeyboardShortcutsProvider>
   );
 }
