@@ -1,3 +1,4 @@
+import { createSyncEventId } from "@/lib/sync/create-sync-event-id";
 import { localEventTable } from "@/lib/pglite/schema/local-event.schema";
 import type { PgliteDb } from "@/lib/pglite/client";
 import type { SyncAction } from "@/types/sync";
@@ -10,12 +11,8 @@ export type RecordLocalEventInput = {
   payload: Record<string, unknown>;
 };
 
-function createEventId() {
-  return crypto.randomUUID();
-}
-
 export async function recordLocalEvent(db: PgliteDb, input: RecordLocalEventInput) {
-  const id = createEventId();
+  const id = createSyncEventId();
   await db.insert(localEventTable).values({
     id,
     tableName: input.tableName,

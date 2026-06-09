@@ -47,7 +47,7 @@ import {
 import { toMapPointPlacementSource } from "@/lib/map/suggest-insert-between-marker-name";
 import { buildMapBootstrapExport, downloadJsonExport } from "@/features/map/lib/export-bootstrap";
 import { flushLocalEventsToSync } from "@/features/map/lib/flush-local-events";
-import { squashApprovedSyncEvents } from "@/features/map/lib/squash-approved-events";
+import { applySyncEvents } from "@/lib/sync/apply-sync-events";
 import { fetchAdminSyncEvents } from "@/services/sync/sync.api";
 import { useMapExplorerStore } from "@/features/map/store/map-explorer-store";
 import {
@@ -207,7 +207,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
   const squashMutation = useMutation({
     mutationFn: async () => {
       const response = await fetchAdminSyncEvents();
-      return squashApprovedSyncEvents(db, mapId, response.events);
+      return applySyncEvents(db, mapId, response.events);
     },
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.mapPoints(mapId) });

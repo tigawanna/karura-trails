@@ -1,6 +1,7 @@
 import { ensureKaruraMap } from "@/data-access-layer/pglite/seed";
 import { KeyboardShortcutsProvider } from "@/features/map/components/KeyboardShortcutsProvider";
 import { MapExplorerPage } from "@/features/map/components/MapExplorerPage";
+import { useSyncEventsPoller } from "@/hooks/useSyncEventsPoller";
 import { PgliteProvider, usePglite } from "@/lib/pglite/components/PgliteProvider.client";
 import { useEffect, useState } from "react";
 import { MainLoader } from "@/components/wrappers/MainLoader";
@@ -35,6 +36,8 @@ function MapShellContent() {
       cancelled = true;
     };
   }, [db]);
+
+  useSyncEventsPoller({ db, mapId, enabled: mapId != null });
 
   if (error) {
     return (
