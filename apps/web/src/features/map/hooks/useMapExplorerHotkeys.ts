@@ -4,6 +4,7 @@ import { getShortcut, SHORTCUT_IDS } from "@/lib/shortcuts/catalog";
 
 type UseMapExplorerHotkeysOptions = {
   enabled: boolean;
+  shortcutsOpen: boolean;
   hasCaptureDraft: boolean;
   hasEditDialog: boolean;
   graphPreviewOpen: boolean;
@@ -23,6 +24,7 @@ type UseMapExplorerHotkeysOptions = {
 
 export function useMapExplorerHotkeys({
   enabled,
+  shortcutsOpen,
   hasCaptureDraft,
   hasEditDialog,
   graphPreviewOpen,
@@ -96,7 +98,9 @@ export function useMapExplorerHotkeys({
 
   useHotkey(asRegisterableHotkey(getShortcut(SHORTCUT_IDS.dismissOverlay).hotkey), onDismiss, {
     enabled:
-      enabled &&
-      (hasCaptureDraft || hasEditDialog || graphPreviewOpen || placementMode || linkMode),
+      shortcutsOpen ||
+      (enabled &&
+        (hasCaptureDraft || hasEditDialog || graphPreviewOpen || placementMode || linkMode)),
+    conflictBehavior: "replace",
   });
 }

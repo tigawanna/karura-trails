@@ -307,9 +307,15 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
   const editingPoint =
     editPointId != null ? (mapPoints.find((point) => point.id === editPointId) ?? null) : null;
 
+  const shortcutsOpen = useKeyboardShortcutsStore((state) => state.open);
+  const setShortcutsOpen = useKeyboardShortcutsStore((state) => state.setOpen);
   const openShortcuts = useKeyboardShortcutsStore((state) => state.setOpen);
 
   const handleHotkeyDismiss = useCallback(() => {
+    if (shortcutsOpen) {
+      setShortcutsOpen(false);
+      return;
+    }
     if (captureDraft) {
       setCaptureDraft(null);
       return;
@@ -339,10 +345,13 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
     setEditPointId,
     setLinkMode,
     setPlacementMode,
+    setShortcutsOpen,
+    shortcutsOpen,
   ]);
 
   useMapExplorerHotkeys({
     enabled: Boolean(workspace),
+    shortcutsOpen,
     hasCaptureDraft: captureDraft != null,
     hasEditDialog: editPointId != null,
     graphPreviewOpen,
@@ -834,6 +843,10 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
             description: values.description || null,
             elevation: values.elevation.trim() ? Number(values.elevation) : null,
             elevationSource: values.elevation.trim() ? "manual" : null,
+            metadata: {
+              ...editingPoint.metadata,
+              markerKind: values.isVirtual ? "virtual" : "physical",
+            },
           });
         }}
         onDelete={() => {

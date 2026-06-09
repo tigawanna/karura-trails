@@ -4,7 +4,7 @@ import type { PgliteDb } from "@/lib/pglite/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef } from "react";
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 300_000; // 300 seconds = 5 minutes
 
 type UseSyncEventsPollerOptions = {
   db: PgliteDb | null;

@@ -1,3 +1,4 @@
+import { SyncActivityToastListener } from "@/features/sync/components/SyncActivityToastListener";
 import { ensureKaruraMap } from "@/data-access-layer/pglite/seed";
 import { useSyncEventsPoller } from "@/hooks/useSyncEventsPoller";
 import { PgliteProvider, usePglite } from "@/lib/pglite/components/PgliteProvider.client";
@@ -45,7 +46,12 @@ function DashboardPgliteRuntime({ children }: { children: ReactNode }) {
 
   useSyncEventsPoller({ db, mapId, enabled: mapId != null });
 
-  return <DashboardMapContext value={{ mapId, mapInitError }}>{children}</DashboardMapContext>;
+  return (
+    <DashboardMapContext value={{ mapId, mapInitError }}>
+      <SyncActivityToastListener />
+      {children}
+    </DashboardMapContext>
+  );
 }
 
 export function useDashboardMap() {

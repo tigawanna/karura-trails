@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { resolveMarkerKind } from "@/lib/map/virtual-marker-naming";
 import {
   MAP_POINT_CATEGORIES,
   type MapPointCategory,
@@ -18,6 +19,7 @@ type MapPointEditDialogProps = {
     category: MapPointCategory;
     description: string;
     elevation: string;
+    isVirtual: boolean;
   }) => void;
   onDelete?: () => void;
   isSaving?: boolean;
@@ -36,6 +38,7 @@ export function MapPointEditDialog({
   const [category, setCategory] = useState<MapPointCategory>("custom");
   const [description, setDescription] = useState("");
   const [elevation, setElevation] = useState("");
+  const [isVirtual, setIsVirtual] = useState(false);
 
   useEffect(() => {
     if (!point) {
@@ -46,6 +49,7 @@ export function MapPointEditDialog({
     setCategory(point.category);
     setDescription(point.description ?? "");
     setElevation(point.elevation != null ? String(point.elevation) : "");
+    setIsVirtual(resolveMarkerKind(point) === "virtual");
   }, [point]);
 
   if (!open || !point) {
@@ -101,28 +105,48 @@ export function MapPointEditDialog({
               onChange={(event) => setDescription(event.target.value)}
             />
           </div>
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-base-300 px-3 py-2.5">
+            <input
+              type="checkbox"
+              className="checkbox mt-0.5 checkbox-sm"
+              checked={isVirtual}
+              onChange={(event) => setIsVirtual(event.target.checked)}
+            />
+            <span className="space-y-0.5">
+              <span className="block text-sm font-medium">Virtual marker</span>
+              <span className="block text-xs text-base-content/60">
+                Virtual markers support anchor refs like 12.3 and can be hidden from the map view.
+              </span>
+            </span>
+          </label>
         </div>
-        <div className="modal-action">
+        <div className="mt-6 flex items-center justify-between gap-2">
           {onDelete ? (
-            <button
+            <Button
               type="button"
-              className="btn btn-sm btn-error"
+              variant="destructive"
+              size="sm"
               onClick={onDelete}
               disabled={isSaving}
             >
               Delete
-            </button>
-          ) : null}
-          <Button type="button" variant="outline" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            onClick={() => onSave({ ref, name, category, description, elevation })}
-            disabled={isSaving}
-          >
-            {isSaving ? "Saving…" : "Save"}
-          </Button>
+            </Button>
+          ) : (
+            <span />
+          )}
+          <div className="flex gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={onClose} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => onSave({ ref, name, category, description, elevation, isVirtual })}
+              disabled={isSaving}
+            >
+              {isSaving ? "Saving…" : "Save"}
+            </Button>
+          </div>
         </div>
       </div>
       <form method="dialog" className="modal-backdrop">

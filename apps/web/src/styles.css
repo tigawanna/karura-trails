@@ -23,6 +23,8 @@
   --color-accent-content: oklch(from #142016 l c h);
   --color-neutral: oklch(from #eef2ee l c h);
   --color-neutral-content: oklch(from #4b5c4f l c h);
+  --color-error: oklch(from #b54a4a l c h);
+  --color-error-content: oklch(from #ffffff l c h);
   --radius-selector: 0.5rem;
   --radius-field: 0.5rem;
   --radius-box: 0.75rem;
@@ -44,6 +46,8 @@
   --color-accent-content: oklch(from #e8ede9 l c h);
   --color-neutral: oklch(from #1a211c l c h);
   --color-neutral-content: oklch(from #9aa89e l c h);
+  --color-error: oklch(from #cf6b6b l c h);
+  --color-error-content: oklch(from #0b0f0d l c h);
 }
 
 @layer base {

@@ -62,7 +62,7 @@ function RootDocument() {
         <ThemeProvider storageKey={AppConfig.themeStorageKey}>
           <TanstackQueryProvider queryClient={queryClient}>
             <Outlet />
-            <Toaster />
+            <Toaster position="bottom-left" />
             {import.meta.env.DEV ? (
               <Suspense fallback={null}>
                 <TanstackDevtools />

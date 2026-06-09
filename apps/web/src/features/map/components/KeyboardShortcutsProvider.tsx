@@ -7,20 +7,10 @@ import { getShortcut, SHORTCUT_IDS } from "@/lib/shortcuts/catalog";
 
 function KeyboardShortcutsHotkey() {
   const toggle = useKeyboardShortcutsStore((state) => state.toggle);
-  const open = useKeyboardShortcutsStore((state) => state.open);
-  const setOpen = useKeyboardShortcutsStore((state) => state.setOpen);
 
   useHotkey(asRegisterableHotkey(getShortcut(SHORTCUT_IDS.showKeyboardShortcuts).hotkey), () => {
     toggle();
   });
-
-  useHotkey(
-    asRegisterableHotkey("Escape"),
-    () => {
-      setOpen(false);
-    },
-    { enabled: open },
-  );
 
   return null;
 }
