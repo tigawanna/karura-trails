@@ -100,6 +100,7 @@ export function LeafletMapPane({
   const neighborLinksLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const markersLayerRef = useRef<import("leaflet").LayerGroup | null>(null);
   const suppressViewportSyncRef = useRef(false);
+  const geocodedRef = useRef(false);
   const onReadyRef = useRef(onReady);
   const onViewportChangeRef = useRef(onViewportChange);
   const onMapPointClickRef = useRef(onMapPointClick);
@@ -117,6 +118,7 @@ export function LeafletMapPane({
   onSegmentClickRef.current = onSegmentClick;
 
   useEffect(() => {
+    geocodedRef.current = false;
     return () => {
       mapRef.current?.remove();
       mapRef.current = null;
@@ -184,14 +186,19 @@ export function LeafletMapPane({
         }
       });
 
-      onReadyRef.current(
-        createMapHandle(map, {
-          setSuppressViewportSync: (value) => {
-            suppressViewportSyncRef.current = value;
-          },
-          emitViewportChange,
-        }),
-      );
+      const handle = createMapHandle(map, {
+        setSuppressViewportSync: (value) => {
+          suppressViewportSyncRef.current = value;
+        },
+        emitViewportChange,
+      });
+      onReadyRef.current(handle);
+
+      const locationQuery = workspace.locationQuery?.trim();
+      if (locationQuery && !geocodedRef.current) {
+        geocodedRef.current = true;
+        void handle.panToQuery(locationQuery);
+      }
     }
 
     void initMap();
@@ -199,14 +206,7 @@ export function LeafletMapPane({
     return () => {
       disposed = true;
     };
-  }, [
-    workspace.id,
-    workspace.baseMapStyle,
-    workspace.mapCenterLat,
-    workspace.mapCenterLng,
-    workspace.mapZoom,
-    placementMode,
-  ]);
+  }, [workspace.id, workspace.baseMapStyle, workspace.locationQuery, placementMode]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || !segmentsLayerRef.current) {

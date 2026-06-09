@@ -25,6 +25,7 @@ import {
 import { trailsQueryOptions } from "@/data-access-layer/pglite/trails";
 import { MapGraphPreviewPanel } from "@/features/map/components/MapGraphPreviewPanel";
 import { MapLinkComposerPanel } from "@/features/map/components/MapLinkComposerPanel";
+import { MapWorkspaceToolbar } from "@/features/map/components/MapWorkspaceToolbar";
 import { useLinkRoutePlanner } from "@/features/map/hooks/useLinkRoutePlanner";
 import { useMapExplorerHotkeys } from "@/features/map/hooks/useMapExplorerHotkeys";
 import { useVirtualGraphPreview } from "@/features/map/hooks/useVirtualGraphPreview";
@@ -60,23 +61,7 @@ import { usePglite } from "@/lib/pglite/components/PgliteProvider.client";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import {
-  ArrowLeft,
-  Database,
-  Download,
-  Eye,
-  EyeOff,
-  ExternalLink,
-  HelpCircle,
-  Link2,
-  MapPin,
-  Network,
-  RefreshCw,
-  Search,
-  Table2,
-  Upload,
-  X,
-} from "lucide-react";
+import { ArrowLeft, ExternalLink, Table2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Group, Panel, Separator } from "react-resizable-panels";
@@ -617,7 +602,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
       className="flex h-full min-h-0 flex-col"
       data-test={isWorkspace ? "map-workspace-page" : "map-explorer-page"}
     >
-      <header className="flex shrink-0 items-center gap-2 border-b border-base-content/10 bg-base-100/90 px-2 py-1.5">
+      <header className="relative z-30 flex shrink-0 items-center gap-2 border-b border-base-content/10 bg-base-100 px-2 py-1.5">
         <SidebarTrigger className="-ml-0.5" />
         <Link
           to="/dashboard"
@@ -645,152 +630,46 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
             Full map
           </Link>
         )}
-        <div className="flex flex-wrap items-center justify-end gap-1.5">
-          <div className="join">
-            <input
-              className="input-bordered input input-sm join-item w-56"
-              placeholder="Search location…"
-              value={locationQuery}
-              onChange={(event) => setLocationQuery(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  void handleSearch();
-                }
-              }}
-            />
-            <button
-              type="button"
-              className="btn join-item btn-sm"
-              onClick={() => void handleSearch()}
-              disabled={isSearching}
-            >
-              <Search className="size-3.5" />
-            </button>
-          </div>
-          <button
-            type="button"
-            className={placementMode ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
-            onClick={() => {
-              setPlacementMode(!placementMode);
-              if (!placementMode) {
-                setLinkMode(false);
-              }
-            }}
-          >
-            <MapPin className="size-3.5" />
-            Place marker
-          </button>
-          <button
-            type="button"
-            className={linkMode ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
-            onClick={() => {
-              setLinkMode(!linkMode);
-              if (!linkMode) {
-                setPlacementMode(false);
-              }
-            }}
-          >
-            <Link2 className="size-3.5" />
-            Link mode
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            disabled={seedTrailsMutation.isPending}
-            onClick={() => seedTrailsMutation.mutate()}
-          >
-            <Database className="size-3.5" />
-            Import trails
-          </button>
-          <button
-            type="button"
-            className={showNeighborCoverage ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
-            onClick={() => setShowNeighborCoverage(!showNeighborCoverage)}
-          >
-            Neighbors
-          </button>
-          <button
-            type="button"
-            className={showSegments ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
-            onClick={() => setShowSegments(!showSegments)}
-          >
-            Segments
-          </button>
-          <button
-            type="button"
-            className={hideVirtualMarkers ? "btn btn-sm btn-primary" : "btn btn-outline btn-sm"}
-            onClick={() => setHideVirtualMarkers(!hideVirtualMarkers)}
-            title={hideVirtualMarkers ? "Show virtual markers" : "Hide virtual markers"}
-          >
-            {hideVirtualMarkers ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
-            Virtual
-          </button>
-          <button
-            type="button"
-            className={graphPreviewOpen ? "btn btn-sm btn-secondary" : "btn btn-outline btn-sm"}
-            onClick={() => handleToggleGraphPreview()}
-            disabled={pathSlugs.length === 0}
-            data-test="graph-preview-toggle"
-          >
-            <Network className="size-3.5" />
-            Graph preview
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            onClick={() => flushMutation.mutate()}
-            disabled={flushMutation.isPending || pendingEventCount === 0}
-          >
-            <Upload className="size-3.5" />
-            Flush events
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            onClick={() => squashMutation.mutate()}
-            disabled={squashMutation.isPending}
-          >
-            Squash approved
-          </button>
-          <button type="button" className="btn btn-outline btn-sm" onClick={handleExport}>
-            <Download className="size-3.5" />
-            Export JSON
-          </button>
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            disabled={importMutation.isPending}
-            onClick={() => importInputRef.current?.click()}
-          >
-            <Upload className="size-3.5" />
-            Import JSON
-          </button>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json,.json"
-            className="hidden"
-            onChange={handleImportFileChange}
-          />
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => openShortcuts(true)}
-            title="Keyboard shortcuts (Shift+?)"
-            data-test="keyboard-shortcuts-open"
-          >
-            <HelpCircle className="size-3.5" />
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-sm"
-            onClick={() => {
-              void queryClient.invalidateQueries({ queryKey: ["pglite"] });
-            }}
-          >
-            <RefreshCw className="size-3.5" />
-          </button>
-        </div>
+        <MapWorkspaceToolbar
+          locationQuery={locationQuery}
+          isSearching={isSearching}
+          onLocationQueryChange={setLocationQuery}
+          onSearch={() => void handleSearch()}
+          placementMode={placementMode}
+          onPlacementModeChange={setPlacementMode}
+          linkMode={linkMode}
+          onLinkModeChange={setLinkMode}
+          showNeighborCoverage={showNeighborCoverage}
+          onShowNeighborCoverageChange={setShowNeighborCoverage}
+          showSegments={showSegments}
+          onShowSegmentsChange={setShowSegments}
+          hideVirtualMarkers={hideVirtualMarkers}
+          onHideVirtualMarkersChange={setHideVirtualMarkers}
+          graphPreviewOpen={graphPreviewOpen}
+          onToggleGraphPreview={handleToggleGraphPreview}
+          graphPreviewDisabled={pathSlugs.length === 0}
+          onImportTrails={() => seedTrailsMutation.mutate()}
+          importTrailsPending={seedTrailsMutation.isPending}
+          onImportJson={() => importInputRef.current?.click()}
+          importJsonPending={importMutation.isPending}
+          onExportJson={handleExport}
+          onFlushEvents={() => flushMutation.mutate()}
+          flushEventsPending={flushMutation.isPending}
+          flushEventsDisabled={pendingEventCount === 0}
+          onSquashApproved={() => squashMutation.mutate()}
+          squashPending={squashMutation.isPending}
+          onOpenShortcuts={() => openShortcuts(true)}
+          onRefreshData={() => {
+            void queryClient.invalidateQueries({ queryKey: ["pglite"] });
+          }}
+        />
+        <input
+          ref={importInputRef}
+          type="file"
+          accept="application/json,.json"
+          className="hidden"
+          onChange={handleImportFileChange}
+        />
       </header>
 
       {isWorkspace ? (

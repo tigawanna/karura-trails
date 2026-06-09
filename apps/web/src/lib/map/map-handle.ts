@@ -1,3 +1,4 @@
+import { KARURA_MAP_VIEWPORT } from "@/lib/map/karura-map-defaults";
 import type { MapBaseMapStyle, MapViewport } from "@/types/map/maps";
 
 export type MapBounds = {
@@ -16,11 +17,7 @@ export type MapHandle = {
 
 export const LEAFLET_MAP_MAX_ZOOM = 22;
 
-export const DEFAULT_MAP_VIEWPORT: MapViewport = {
-  latitude: -1.286389,
-  longitude: 36.817223,
-  zoom: 13,
-};
+export const DEFAULT_MAP_VIEWPORT: MapViewport = KARURA_MAP_VIEWPORT;
 
 export const MAP_FIT_BOUNDS_MAX_ZOOM = 21;
 export const MAP_POINT_FOCUS_ZOOM = 19;
