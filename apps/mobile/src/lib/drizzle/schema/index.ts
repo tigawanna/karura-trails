@@ -21,3 +21,9 @@ export type {
 
 export { landmarkTypes } from "./landmark-types";
 export type { LandmarkTypeSelect, LandmarkTypeInsert } from "./landmark-types";
+
+export { syncEvents } from "./sync-events";
+export type { SyncEventSelect, SyncEventInsert } from "./sync-events";
+
+export { appliedSyncEvents } from "./applied-sync-events";
+export type { AppliedSyncEventSelect, AppliedSyncEventInsert } from "./applied-sync-events";

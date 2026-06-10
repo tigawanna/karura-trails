@@ -66,6 +66,8 @@ export function KaruraMap({
   const { location: fallbackLocation } = useDeviceLocation();
   const [mapReady, setMapReady] = useState(false);
   const [mapBearing, setMapBearing] = useState(0);
+  const [viewportZoom, setViewportZoom] = useState<number | null>(null);
+  const [hasUserViewport, setHasUserViewport] = useState(false);
   const { enrichedPoints, pointsById, isLoading: graphLoading } = useRoutingGraphData();
   const location = userLocation ?? fallbackLocation?.coords ?? null;
 
@@ -87,7 +89,7 @@ export function KaruraMap({
     if (followUserLocation && location) {
       return {
         center: [location.longitude, location.latitude] as [number, number],
-        zoom: FOLLOW_USER_ZOOM,
+        zoom: viewportZoom ?? FOLLOW_USER_ZOOM,
         bearing: shouldRotateMapToHeading ? userHeading : undefined,
         duration: mapReady ? (recenterKey > 0 ? 700 : 250) : 0,
       };
@@ -99,10 +101,14 @@ export function KaruraMap({
       if (coordinates && typeof coordinates[0] === "number" && typeof coordinates[1] === "number") {
         return {
           center: [coordinates[0], coordinates[1]] as [number, number],
-          zoom: FOCUS_MARKER_ZOOM,
+          zoom: viewportZoom ?? FOCUS_MARKER_ZOOM,
           duration: mapReady ? 700 : 0,
         };
       }
+    }
+
+    if (hasUserViewport) {
+      return null;
     }
 
     const bboxes = enrichedPoints.map((point) => calculateBBox(geomParse(point.geom)));
@@ -129,6 +135,8 @@ export function KaruraMap({
     recenterKey,
     shouldRotateMapToHeading,
     userHeading,
+    viewportZoom,
+    hasUserViewport,
   ]);
 
   const effectiveMapBearing =
@@ -140,6 +148,15 @@ export function KaruraMap({
     },
     [],
   );
+
+  const handleRegionDidChange = useCallback((event: NativeSyntheticEvent<ViewStateChangeEvent>) => {
+    setMapBearing(event.nativeEvent.bearing);
+    const nextZoom = event.nativeEvent.zoom;
+    if (Number.isFinite(nextZoom)) {
+      setViewportZoom(nextZoom);
+      setHasUserViewport(true);
+    }
+  }, []);
 
   const resolveMarkerAtCoordinate = useCallback(
     (latitude: number, longitude: number) => {
@@ -211,19 +228,19 @@ export function KaruraMap({
           onLongPress={handleLongPress}
           onRegionWillChange={onUserInteraction}
           onRegionIsChanging={handleRegionIsChanging}
-          onRegionDidChange={handleRegionIsChanging}
+          onRegionDidChange={handleRegionDidChange}
         >
-          <Camera
-            key={
-              followUserLocation
-                ? `follow-${recenterKey}-${location?.latitude}-${location?.longitude}`
-                : `focus-${focusPointId}`
-            }
-            center={camera.center}
-            zoom={camera.zoom}
-            bearing={camera.bearing}
-            duration={camera.duration}
-          />
+          {camera ? (
+            <Camera
+              key={
+                followUserLocation ? `follow-${recenterKey}` : `focus-${focusPointId ?? "default"}`
+              }
+              center={camera.center}
+              zoom={camera.zoom}
+              bearing={camera.bearing}
+              duration={camera.duration}
+            />
+          ) : null}
 
           {routePointIds.length > 1 ? (
             <RoutePreviewLayer routePointIds={routePointIds} pointsById={pointsById} />

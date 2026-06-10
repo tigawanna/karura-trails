@@ -9,6 +9,6 @@
       "@/drizzle/*": ["./drizzle/*"]
     }
   },
-  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "plugins"],
+  "exclude": ["node_modules", "babel.config.js", "metro.config.js", "plugins", "scripts"],
   "include": ["**/*.ts", "**/*.tsx", ".expo/types/**/*.ts", "expo-env.d.ts"]
 }

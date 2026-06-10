@@ -24,7 +24,8 @@
     "build-production": "EXPO_DEBUG=1 eas build --platform android --profile production --verbose-logs --build-logger-level=debug",
     "lint": "expo lint",
     "check-types": "tsgo --noEmit",
-    "db:migrate": "npx drizzle-kit generate"
+    "db:migrate": "npx drizzle-kit generate",
+    "generate:events": "pnpm --filter web exec tsx ../mobile/scripts/generate-karura-events.ts"
   },
   "dependencies": {
     "@expo/metro-runtime": "~56.0.14",

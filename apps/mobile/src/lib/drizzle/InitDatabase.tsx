@@ -6,14 +6,12 @@ import {
   neighborLinksQueryOptions,
 } from "@/data-access-layer/routing-graph";
 import migrations from "@/drizzle/migrations";
-import { loadRoutingGraphSeed } from "@/geo/load-routing-seed";
 import { queryClient } from "@/lib/tanstack/query/client";
+import { bootstrapSyncData } from "@/lib/sync/bootstrap-sync-data";
 import { migrate } from "drizzle-orm/op-sqlite/migrator";
 import { useEffect, useState } from "react";
 import { db, ensureSpatialMetadata, resetLocalDatabase } from "./client";
 import { backfillMarkerKinds } from "./backfill-marker-kinds";
-import { seedLandmarkTypesFromJson } from "./seed-landmark-types";
-import { seedRoutingGraphFromJson } from "./seed-routing-graph";
 
 interface InitDatabaseProps {
   children?: React.ReactNode;
@@ -51,9 +49,7 @@ export function InitDatabase({ children }: InitDatabaseProps) {
 
       try {
         await ensureSpatialMetadata();
-        const seed = loadRoutingGraphSeed();
-        await seedLandmarkTypesFromJson(db, seed);
-        await seedRoutingGraphFromJson(db, seed);
+        await bootstrapSyncData(db);
         await backfillMarkerKinds(db);
         if (cancelled) {
           return;

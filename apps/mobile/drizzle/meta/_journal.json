@@ -36,6 +36,13 @@
       "when": 1780762000000,
       "tag": "0004_landmark_types",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1780763000000,
+      "tag": "0005_sync_events",
+      "breakpoints": true
     }
   ]
 }

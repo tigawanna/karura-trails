@@ -6,6 +6,7 @@ import m0001 from "./0001_hesitant_dragon_lord.sql";
 import m0002 from "./0002_colorful_hellion.sql";
 import m0003 from "./0003_marker_kind.sql";
 import m0004 from "./0004_landmark_types.sql";
+import m0005 from "./0005_sync_events.sql";
 
 export default {
   journal,
@@ -15,5 +16,6 @@ export default {
     m0002,
     m0003,
     m0004,
+    m0005,
   },
 };
