@@ -1,10 +1,16 @@
 import type { DrizzleDB } from "@/lib/drizzle/client";
 import { syncEvents } from "@/lib/drizzle/schema";
+import {
+  countUnappliedSyncEvents,
+  isSyncBootstrapComplete,
+  listUnappliedSyncEvents,
+} from "@/lib/sync/applied-sync-events";
 import { applySyncEvents } from "@/lib/sync/apply-sync-events";
-import { getLatestAppliedSyncEventId } from "@/lib/sync/applied-sync-events";
 import { loadSyncEventsSeed } from "@/lib/sync/load-sync-events-seed";
 import { payloadToRecord, type SyncEventRecord } from "@/lib/sync/sync.types";
-import { asc, gt } from "drizzle-orm";
+import { count } from "drizzle-orm";
+
+const BATCH_SIZE = 100;
 
 async function upsertLocalSeedEvents(database: DrizzleDB, events: SyncEventRecord[]) {
   if (events.length === 0) {
@@ -30,51 +36,31 @@ async function upsertLocalSeedEvents(database: DrizzleDB, events: SyncEventRecor
     .onConflictDoNothing({ target: syncEvents.id });
 }
 
-async function listPendingEvents(database: DrizzleDB, afterId: string | null) {
-  if (afterId) {
-    return database
-      .select()
-      .from(syncEvents)
-      .where(gt(syncEvents.id, afterId))
-      .orderBy(asc(syncEvents.id));
+export async function seedSyncEventsFromAsset(database: DrizzleDB) {
+  const [syncCountRow] = await database.select({ count: count() }).from(syncEvents);
+  const syncCount = syncCountRow?.count ?? 0;
+
+  if (syncCount > 0 && (await isSyncBootstrapComplete(database))) {
+    return { seeded: 0, applied: 0 };
   }
 
-  return database.select().from(syncEvents).orderBy(asc(syncEvents.id));
-}
-
-function toSyncEventRecord(row: typeof syncEvents.$inferSelect): SyncEventRecord {
-  return {
-    id: row.id,
-    deviceId: row.deviceId,
-    tableName: row.tableName,
-    rowId: row.rowId,
-    action: row.action as SyncEventRecord["action"],
-    payloadJson: row.payloadJson,
-    createdAt: row.createdAt,
-    verified: row.verified,
-    verifiedAt: row.verifiedAt,
-    verifiedBy: row.verifiedBy,
-  };
-}
-
-export async function seedSyncEventsFromAsset(database: DrizzleDB) {
   const seed = loadSyncEventsSeed();
   const records = seed.events.map((event) => payloadToRecord(event, true));
-  await upsertLocalSeedEvents(database, records);
 
-  let cursor = await getLatestAppliedSyncEventId(database);
+  if (syncCount < seed.events.length || (await countUnappliedSyncEvents(database)) > 0) {
+    await upsertLocalSeedEvents(database, records);
+  }
+
   let totalApplied = 0;
 
   while (true) {
-    const pendingRows = await listPendingEvents(database, cursor);
+    const pendingRows = await listUnappliedSyncEvents(database, BATCH_SIZE);
     if (pendingRows.length === 0) {
       break;
     }
 
-    const pending = pendingRows.map(toSyncEventRecord);
-    const result = await applySyncEvents(database, pending);
+    const result = await applySyncEvents(database, pendingRows);
     totalApplied += result.applied;
-    cursor = pending[pending.length - 1]?.id ?? cursor;
   }
 
   return { seeded: records.length, applied: totalApplied };

@@ -1,3 +1,4 @@
+import { useRegisterCrashalytics } from "@/lib/react-native-firebase/crashalytics/use-register-crashalytics";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { DarkTheme, DefaultTheme, ThemeProvider } from "expo-router";
 import { Drawer } from "expo-router/drawer";
@@ -7,6 +8,7 @@ import { PaperProvider, useTheme } from "react-native-paper";
 
 import { AnimatedSplashOverlay } from "@/components/splash/animated-icon";
 import { MarkerActionMenuHost } from "@/components/map/marker-action-menu-host";
+import { useLocationWatcher } from "@/hooks/use-location-watcher";
 import { InitDatabase } from "@/lib/drizzle/InitDatabase";
 import { queryClient } from "@/lib/tanstack/query/client";
 import {
@@ -14,8 +16,12 @@ import {
   useAppState,
   useOnlineManager,
 } from "@/lib/tanstack/query/react-native-setup-hooks";
-import { isDevBuild } from "@/lib/dev/is-dev-build";
 import { useThemeSetup } from "@/theme";
+
+function LocationWatcherHost() {
+  useLocationWatcher();
+  return null;
+}
 
 function DrawerNavigator() {
   const { colors } = useTheme();
@@ -63,9 +69,8 @@ function DrawerNavigator() {
       <Drawer.Screen
         name="settings"
         options={{
-          drawerLabel: "Developer settings",
+          drawerLabel: "Settings",
           title: "Settings",
-          drawerItemStyle: isDevBuild() ? undefined : { display: "none", height: 0 },
         }}
       />
     </Drawer>
@@ -75,6 +80,7 @@ function DrawerNavigator() {
 export default function RootLayout() {
   useOnlineManager();
   useAppState(onAppStateChange);
+  useRegisterCrashalytics();
   const { colorScheme, paperTheme, isDarkMode } = useThemeSetup();
 
   return (
@@ -82,6 +88,7 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <PaperProvider theme={paperTheme}>
           <QueryClientProvider client={queryClient}>
+            <LocationWatcherHost />
             <InitDatabase>
               <AnimatedSplashOverlay />
               <DrawerNavigator />

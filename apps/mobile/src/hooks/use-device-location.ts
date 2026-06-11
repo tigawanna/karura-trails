@@ -10,16 +10,7 @@ import {
   type LocationSpoofState,
 } from "@/lib/dev/location-spoof-storage";
 import { queryKeyPrefixes } from "@/lib/tanstack/query/client";
-
-async function getCurrentLocation(): Promise<Location.LocationObject> {
-  const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== "granted") {
-    throw new Error("Permission to access location was denied");
-  }
-  return Location.getCurrentPositionAsync({
-    accuracy: Location.Accuracy.High,
-  });
-}
+import { requestFreshGpsLocation } from "@/services/location/location-watch-service";
 
 function buildLocationObject(latitude: number, longitude: number): Location.LocationObject {
   return {
@@ -52,9 +43,9 @@ export function useDeviceLocation() {
     isLoading: gpsLoading,
   } = useQuery({
     queryKey: [queryKeyPrefixes.deviceLocation, "gps"],
-    queryFn: getCurrentLocation,
+    queryFn: () => requestFreshGpsLocation(queryClient),
     enabled: !spoof?.enabled,
-    refetchInterval: spoof?.enabled ? false : 60_000,
+    staleTime: 1000 * 60 * 5,
     retry: false,
   });
 
@@ -85,7 +76,7 @@ export function useDeviceLocation() {
   }, [queryClient]);
 
   const { mutate: refreshLocation, isPending: isRefreshing } = useMutation({
-    mutationFn: getCurrentLocation,
+    mutationFn: () => requestFreshGpsLocation(queryClient),
     onSuccess: (data) => {
       queryClient.setQueryData([queryKeyPrefixes.deviceLocation, "gps"], data);
     },

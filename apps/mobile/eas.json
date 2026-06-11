@@ -56,7 +56,15 @@
     "production": {
       "distribution": "store",
       "channel": "production",
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_NO_CACHE": "true",
+        "EXPO_NO_GIT_STATUS": "true",
+        "APP_VARIANT": "production"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {

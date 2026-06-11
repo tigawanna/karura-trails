@@ -17,6 +17,57 @@ interface InitDatabaseProps {
   children?: React.ReactNode;
 }
 
+class MigrationBootstrapError extends Error {
+  override name = "MigrationBootstrapError";
+}
+
+class InitBootstrapError extends Error {
+  override name = "InitBootstrapError";
+}
+
+let bootstrapPromise: Promise<void> | null = null;
+
+async function runDatabaseBootstrap(): Promise<void> {
+  if (process.env.EXPO_PUBLIC_RESET_DATABASE === "1") {
+    resetLocalDatabase();
+    bootstrapPromise = null;
+  }
+
+  if (bootstrapPromise) {
+    return bootstrapPromise;
+  }
+
+  bootstrapPromise = (async () => {
+    try {
+      await migrate(db, migrations);
+    } catch (err) {
+      const nextError = err instanceof Error ? err : new Error(String(err));
+      console.error("[InitDatabase] migration failed:", nextError);
+      throw new MigrationBootstrapError(nextError.message);
+    }
+
+    try {
+      await ensureSpatialMetadata();
+      await bootstrapSyncData(db);
+      await backfillMarkerKinds(db);
+      await Promise.all([
+        queryClient.prefetchQuery(enrichedRoutingPointsQueryOptions),
+        queryClient.prefetchQuery(neighborLinksQueryOptions),
+        queryClient.prefetchQuery(landmarkTypesQueryOptions),
+      ]);
+    } catch (err) {
+      const nextError = err instanceof Error ? err : new Error(String(err));
+      console.error("[InitDatabase] initialization failed:", nextError);
+      throw new InitBootstrapError(nextError.message);
+    }
+  })().catch((err) => {
+    bootstrapPromise = null;
+    throw err;
+  });
+
+  return bootstrapPromise;
+}
+
 export function InitDatabase({ children }: InitDatabaseProps) {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -26,54 +77,29 @@ export function InitDatabase({ children }: InitDatabaseProps) {
   useEffect(() => {
     let cancelled = false;
 
-    async function bootstrap() {
-      try {
-        if (process.env.EXPO_PUBLIC_RESET_DATABASE === "1") {
-          resetLocalDatabase();
+    void runDatabaseBootstrap()
+      .then(() => {
+        if (!cancelled) {
+          setSuccess(true);
+          setReady(true);
         }
-
-        await migrate(db, migrations);
-        if (cancelled) {
-          return;
-        }
-        setSuccess(true);
-      } catch (err) {
+      })
+      .catch((err) => {
         if (cancelled) {
           return;
         }
         const nextError = err instanceof Error ? err : new Error(String(err));
-        console.error("[InitDatabase] migration failed:", nextError);
+        if (nextError instanceof MigrationBootstrapError) {
+          setError(nextError);
+          return;
+        }
+        if (nextError instanceof InitBootstrapError) {
+          setSuccess(true);
+          setInitError(nextError);
+          return;
+        }
         setError(nextError);
-        return;
-      }
-
-      try {
-        await ensureSpatialMetadata();
-        await bootstrapSyncData(db);
-        await backfillMarkerKinds(db);
-        if (cancelled) {
-          return;
-        }
-        await Promise.all([
-          queryClient.prefetchQuery(enrichedRoutingPointsQueryOptions),
-          queryClient.prefetchQuery(neighborLinksQueryOptions),
-          queryClient.prefetchQuery(landmarkTypesQueryOptions),
-        ]);
-        if (cancelled) {
-          return;
-        }
-        setReady(true);
-      } catch (err) {
-        if (cancelled) {
-          return;
-        }
-        const nextError = err instanceof Error ? err : new Error(String(err));
-        console.error("[InitDatabase] initialization failed:", nextError);
-        setInitError(nextError);
-      }
-    }
-
-    void bootstrap();
+      });
 
     return () => {
       cancelled = true;
@@ -81,7 +107,6 @@ export function InitDatabase({ children }: InitDatabaseProps) {
   }, []);
 
   if (error) {
-    console.error("[InitDatabase] migration failed:", error);
     return (
       <ErrorState
         title="Migration Failed"

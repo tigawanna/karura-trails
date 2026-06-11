@@ -90,6 +90,11 @@ const getPlugins = (bundleId: UniqueIdentifier) => {
     ],
   ];
 
+  if (bundleId === PRODUCTION_BUNDLE_ID || bundleId === `${PRODUCTION_BUNDLE_ID}.preview`) {
+    plugins.push("@react-native-firebase/app");
+    plugins.push("@react-native-firebase/crashlytics");
+  }
+
   return plugins;
 };
 
@@ -97,6 +102,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const { name, slug } = getAppName();
   const bundleIdentifier = getUniqueIdentifier();
   const plugins = getPlugins(bundleIdentifier);
+  const isNotDev =
+    bundleIdentifier === PRODUCTION_BUNDLE_ID ||
+    bundleIdentifier === `${PRODUCTION_BUNDLE_ID}.preview`;
 
   return {
     ...config,
@@ -124,6 +132,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: BrandColors.splashBackground,
         foregroundImage: "./assets/images/adaptive-icon.png",
       },
+      googleServicesFile: isNotDev ? "./google-services.json" : undefined,
       predictiveBackGestureEnabled: false,
       package: bundleIdentifier,
     },
@@ -138,6 +147,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     runtimeVersion: {
       policy: "appVersion",
+    },
+    updates: {
+      url: "https://u.expo.dev/b57a6ef2-0ad6-4a59-a8bb-2ba46308d5fb",
     },
     extra: {
       router: {},

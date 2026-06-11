@@ -1,33 +1,16 @@
-import merge from "deepmerge";
-import { useMemo } from "react";
-import { useColorScheme } from "react-native";
-import { MD3DarkTheme, MD3LightTheme } from "react-native-paper";
-
-import { AppColors } from "./md3-colors";
-import { getMaterialDynamicTheme, isDynamicColorSupported } from "./material-dynamic-colors";
+import { useSettingsStore, useThemeStore } from "@/stores/settings-store";
+import { resolvePaperTheme } from "@/theme/paper-themes";
 
 export function useThemeSetup() {
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === "dark";
+  const { theme: userThemePreference, isDarkMode } = useThemeStore();
+  const colorScheme = useSettingsStore((state) => state.colorScheme);
+  const dynamicColors = useSettingsStore((state) => state.dynamicColors);
 
-  const paperTheme = useMemo(() => {
-    const dynamicSupported = isDynamicColorSupported();
-    const themeColors = dynamicSupported ? getMaterialDynamicTheme() : AppColors;
-
-    const lightBasedTheme = merge(MD3LightTheme, {
-      colors: themeColors.light,
-    });
-
-    const darkBasedTheme = merge(MD3DarkTheme, {
-      colors: themeColors.dark,
-    });
-
-    return isDarkMode ? darkBasedTheme : lightBasedTheme;
-  }, [isDarkMode]);
+  const paperTheme = resolvePaperTheme(colorScheme, dynamicColors, isDarkMode);
 
   return {
     paperTheme,
-    colorScheme,
+    colorScheme: userThemePreference,
     isDarkMode,
   };
 }
