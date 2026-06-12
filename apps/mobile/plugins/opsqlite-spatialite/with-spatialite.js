@@ -3,6 +3,21 @@ const path = require("path");
 const { withDangerousMod } = require("expo/config-plugins");
 
 const ARCHITECTURES = ["arm64-v8a", "armeabi-v7a", "x86", "x86_64"];
+const FETCH_COMMAND = "pnpm fetch:spatialite";
+
+function missingLibsError(detail) {
+  return new Error(
+    [
+      "SpatiaLite native libraries are not available for prebuild.",
+      detail,
+      "",
+      `These binaries are intentionally not committed. Download them first:`,
+      `  ${FETCH_COMMAND}`,
+      "",
+      "Then run the prebuild again.",
+    ].join("\n"),
+  );
+}
 
 module.exports = (config) => {
   return withDangerousMod(config, [
@@ -11,24 +26,27 @@ module.exports = (config) => {
       const pluginDir = path.dirname(module.filename);
       const sourceBase = path.join(pluginDir, "spatialite-libs", "jni");
       const platformProjectRoot = config.modRequest.platformProjectRoot;
-      const targetBase = path.join(platformProjectRoot, "app", "src", "main", "jniLibs");
+      const targetBase = path.join(
+        platformProjectRoot,
+        "app",
+        "src",
+        "main",
+        "jniLibs",
+      );
 
       if (!fs.existsSync(sourceBase)) {
-        throw new Error(
-          `SpatiaLite libraries not found at ${sourceBase}\n` +
-            "Run pnpm fetch:spatialite before prebuild (see spatialite.release.json).",
-        );
+        throw missingLibsError(`Expected libraries at ${sourceBase}.`);
       }
+
+      let copied = 0;
 
       for (const arch of ARCHITECTURES) {
         const sourceDir = path.join(sourceBase, arch);
         const targetDir = path.join(targetBase, arch);
 
-        if (!fs.existsSync(sourceDir)) {
-          throw new Error(
-            `Missing SpatiaLite ABI folder: ${sourceDir}\n` +
-              "Run pnpm fetch:spatialite to download release artifacts.",
-          );
+        const soFile = path.join(sourceDir, "libspatialite.so");
+        if (!fs.existsSync(soFile)) {
+          throw missingLibsError(`Missing ABI binary: ${soFile}.`);
         }
 
         fs.mkdirSync(targetDir, { recursive: true });
@@ -37,9 +55,15 @@ module.exports = (config) => {
           if (!file.endsWith(".so")) {
             continue;
           }
-          fs.copyFileSync(path.join(sourceDir, file), path.join(targetDir, file));
+          fs.copyFileSync(
+            path.join(sourceDir, file),
+            path.join(targetDir, file),
+          );
+          copied += 1;
         }
       }
+
+      console.log(`[with-spatialite] copied ${copied} native libraries`);
 
       return config;
     },

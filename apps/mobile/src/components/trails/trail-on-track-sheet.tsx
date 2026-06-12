@@ -1,5 +1,5 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons/static";
 import { useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";

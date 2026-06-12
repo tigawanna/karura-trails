@@ -39,6 +39,7 @@ const getPlugins = (bundleId: UniqueIdentifier) => {
   const isProduction = bundleId === PRODUCTION_BUNDLE_ID;
 
   const plugins: NonNullable<ExpoConfig["plugins"]> = [
+    "@react-native-vector-icons/material-design-icons",
     "expo-router",
     "expo-asset",
     "expo-image",

@@ -1,5 +1,5 @@
 import { LegendList } from "@legendapp/list/react-native";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons/static";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 import { Searchbar, Text, useTheme } from "react-native-paper";
