@@ -1,12 +1,21 @@
-import {
-  getCrashlytics,
-  setAttribute,
-  setCrashlyticsCollectionEnabled,
-} from "@react-native-firebase/crashlytics";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 
-export function registerCrashalytics() {
+function isCrashlyticsEnabled() {
+  return process.env.APP_VARIANT === "production" && !__DEV__;
+}
+
+export async function registerCrashalytics() {
+  if (!isCrashlyticsEnabled()) {
+    return;
+  }
+
+  const {
+    getCrashlytics,
+    setAttribute,
+    setCrashlyticsCollectionEnabled,
+  } = await import("@react-native-firebase/crashlytics");
+
   const crashlytics = getCrashlytics();
   setCrashlyticsCollectionEnabled(crashlytics, true);
   setAttribute(crashlytics, "framework", "expo");
@@ -16,9 +25,6 @@ export function registerCrashalytics() {
 
 export function useRegisterCrashalytics() {
   useEffect(() => {
-    if (process.env.APP_VARIANT === "development" || __DEV__) {
-      return;
-    }
-    registerCrashalytics();
+    void registerCrashalytics();
   }, []);
 }

@@ -32,7 +32,11 @@ yarn-error.*
 
 # local env files
 .env*.local
-google-services.json
+
+# Firebase / Google services
+.secrets/
+google-services*.json
+GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
@@ -47,3 +51,4 @@ example
 plugins/opsqlite-spatialite/spatialite-libs/
 spatialite-libs/
 .cache/spatialite-downloads/
+android/app/src/main/jniLibs/

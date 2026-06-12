@@ -63,6 +63,17 @@
       "android": {
         "buildType": "app-bundle"
       }
+    },
+    "production:local": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "TMPDIR": "/home/dennis/tmp-build",
+        "GRADLE_USER_HOME": "/home/dennis/.gradle-tmp-build"
+      }
     }
   },
   "submit": {

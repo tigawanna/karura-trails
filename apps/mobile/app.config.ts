@@ -91,11 +91,6 @@ const getPlugins = (bundleId: UniqueIdentifier) => {
     ],
   ];
 
-  if (bundleId === PRODUCTION_BUNDLE_ID || bundleId === `${PRODUCTION_BUNDLE_ID}.preview`) {
-    plugins.push("@react-native-firebase/app");
-    plugins.push("@react-native-firebase/crashlytics");
-  }
-
   return plugins;
 };
 
@@ -103,9 +98,11 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const { name, slug } = getAppName();
   const bundleIdentifier = getUniqueIdentifier();
   const plugins = getPlugins(bundleIdentifier);
-  const isNotDev =
-    bundleIdentifier === PRODUCTION_BUNDLE_ID ||
-    bundleIdentifier === `${PRODUCTION_BUNDLE_ID}.preview`;
+  const useFirebase = process.env.APP_VARIANT === "production";
+  if (useFirebase) {
+    plugins.push("@react-native-firebase/app");
+    plugins.push("@react-native-firebase/crashlytics");
+  }
 
   return {
     ...config,
@@ -133,7 +130,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         backgroundColor: BrandColors.splashBackground,
         foregroundImage: "./assets/images/adaptive-icon.png",
       },
-      googleServicesFile: isNotDev ? "./google-services.json" : undefined,
+      googleServicesFile: useFirebase ? "./google-services.json" : undefined,
       predictiveBackGestureEnabled: false,
       package: bundleIdentifier,
     },

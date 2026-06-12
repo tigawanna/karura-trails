@@ -37,5 +37,10 @@ yarn-error.log*
 .DS_Store
 *.pem
 
+# Secrets
+.secrets
+google-services*.json
+GoogleService-Info.plist
+
 # evlog local NDJSON logs (also auto-gitignored under .evlog/)
 .evlog/
