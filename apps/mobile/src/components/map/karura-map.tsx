@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { NativeSyntheticEvent } from "react-native";
-import { ActivityIndicator, StyleSheet, useColorScheme, View } from "react-native";
-import { Text, useTheme } from "react-native-paper";
+import { StyleSheet, useColorScheme, View } from "react-native";
 import type { PressEvent, ViewStateChangeEvent } from "@maplibre/maplibre-react-native";
 import { Camera, Map } from "@maplibre/maplibre-react-native";
 
@@ -15,6 +14,7 @@ import { findNearestMarker } from "@/geo/nearest-marker";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useMapBasemapPreference } from "@/hooks/use-map-basemap-preference";
 import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
+import { LoadingOverlay } from "@/components/ui/loading-state";
 import { calculateBBox, combineBBoxes, bboxCenter, bboxToZoom, geomParse } from "@/geo/geom-parse";
 import { filterMapVisibleRoutingPoints } from "@/geo/map-marker-visibility";
 import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM } from "@/geo/karura-bounds";
@@ -59,7 +59,6 @@ export function KaruraMap({
   onMarkerLongPress,
   onUserInteraction,
 }: KaruraMapProps) {
-  const { colors } = useTheme();
   const colorScheme = normalizeMapColorScheme(useColorScheme());
   const { preset, setPreset, isReady: basemapReady } = useMapBasemapPreference();
   const mapStyle = resolveMapStyle(preset, colorScheme);
@@ -206,18 +205,7 @@ export function KaruraMap({
   return (
     <View style={styles.container}>
       {(graphLoadingState || !basemapReady) && (
-        <View
-          style={[
-            StyleSheet.absoluteFill,
-            styles.loadingOverlay,
-            { backgroundColor: colors.backdrop },
-          ]}
-        >
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={{ color: colors.onSurface, marginTop: 8 }}>
-            {!basemapReady ? "Loading map…" : "Loading trail network…"}
-          </Text>
-        </View>
+        <LoadingOverlay testID="karura-map-loading" />
       )}
       {basemapReady ? (
         <Map
@@ -285,10 +273,5 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     zIndex: 20,
     elevation: 20,
-  },
-  loadingOverlay: {
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 10,
   },
 });

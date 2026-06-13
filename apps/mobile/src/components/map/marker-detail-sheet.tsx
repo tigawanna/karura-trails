@@ -2,10 +2,11 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetScrollView } from "@gorhom
 import MaterialCommunityIcons from "@react-native-vector-icons/material-design-icons/static";
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { Button, Chip, IconButton, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LoadingIndicator } from "@/components/ui/loading-state";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
 import { markerLabel, haversineDistanceMeters, pointCoordinates } from "@/geo/nearest-marker";
 import { Spacing } from "@/theme";
@@ -119,7 +120,7 @@ export function MarkerDetailSheet({
           bottomInset={insets.bottom}
         >
           <View style={styles.loadingContent}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <LoadingIndicator size="large" />
           </View>
         </BottomSheet>
       </View>
@@ -154,18 +155,6 @@ export function MarkerDetailSheet({
           contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + Spacing.five }]}
           testID="marker-detail-sheet-content"
         >
-          {dismissible ? (
-            <View style={styles.topBar}>
-              <View style={styles.topBarSpacer} />
-              <IconButton
-                icon="close"
-                size={20}
-                onPress={onDismiss}
-                testID="marker-detail-sheet-close"
-              />
-            </View>
-          ) : null}
-
           {!marker ? (
             <Text variant="titleMedium" style={{ color: colors.onSurface }}>
               Tap a marker on the map
@@ -173,10 +162,24 @@ export function MarkerDetailSheet({
           ) : (
             <>
               <View style={styles.hero}>
-                <Text variant="labelLarge" style={[styles.eyebrow, { color: colors.primary }]}>
-                  {formatKindLabel(marker.markerKind)}
-                  {marker.category ? ` · ${marker.category.replaceAll("_", " ")}` : ""}
-                </Text>
+                <View style={styles.heroHeader}>
+                  <Text
+                    variant="labelLarge"
+                    style={[styles.eyebrow, { color: colors.primary, flex: 1 }]}
+                  >
+                    {formatKindLabel(marker.markerKind)}
+                    {marker.category ? ` · ${marker.category.replaceAll("_", " ")}` : ""}
+                  </Text>
+                  {dismissible ? (
+                    <IconButton
+                      icon="close"
+                      size={20}
+                      onPress={onDismiss}
+                      style={styles.closeButton}
+                      testID="marker-detail-sheet-close"
+                    />
+                  ) : null}
+                </View>
                 <Text variant="headlineMedium" style={[styles.title, { color: colors.onSurface }]}>
                   {label}
                 </Text>
@@ -312,17 +315,18 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: Spacing.five,
-    paddingTop: Spacing.two,
+    paddingTop: Spacing.one,
     gap: Spacing.four,
   },
-  topBar: {
+  heroHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: -Spacing.two,
-    marginBottom: -Spacing.two,
+    gap: Spacing.one,
   },
-  topBarSpacer: {
-    flex: 1,
+  closeButton: {
+    margin: 0,
+    marginTop: -Spacing.two,
+    marginRight: -Spacing.two,
   },
   hero: {
     gap: Spacing.two,

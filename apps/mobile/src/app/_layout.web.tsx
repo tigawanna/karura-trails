@@ -28,6 +28,7 @@ function WebStack() {
     >
       <Stack.Screen name="index" options={{ headerShown: false, title: "Map" }} />
       <Stack.Screen name="trails" options={{ title: "Markers" }} />
+      <Stack.Screen name="sync-queue" options={{ title: "Pending sync" }} />
       <Stack.Screen name="settings" options={{ title: "Settings" }} />
     </Stack>
   );

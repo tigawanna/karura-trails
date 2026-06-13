@@ -1,7 +1,7 @@
 import { LegendList } from "@legendapp/list/react-native";
 import { useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
-import { ActivityIndicator, Card, Chip, Searchbar, Text, useTheme } from "react-native-paper";
+import { Card, Chip, Searchbar, Text, useTheme } from "react-native-paper";
 import { useQuery } from "@tanstack/react-query";
 
 import { ClearSearchFiltersButton } from "@/components/common/clear-search-filters-button";
@@ -10,7 +10,16 @@ import { landmarkTypesQueryOptions } from "@/data-access-layer/landmark-types";
 import { enrichedRoutingPointsQueryOptions } from "@/data-access-layer/routing-graph";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
 import { markerListKey, useMarkersFilter } from "@/hooks/use-markers-filter";
+import { legendListVirtualizationProps } from "@/lib/legend-list/virtualization-props";
 import { MaxContentWidth, Spacing } from "@/theme";
+
+const MARKER_ROW_ESTIMATED_SIZE = 96;
+const FILTER_CHIP_ESTIMATED_SIZE = 80;
+const markerListVirtualization = legendListVirtualizationProps(MARKER_ROW_ESTIMATED_SIZE);
+const filterChipListVirtualization = legendListVirtualizationProps(
+  FILTER_CHIP_ESTIMATED_SIZE,
+  "horizontal",
+);
 
 function MarkerListItem({ marker }: { marker: EnrichedRoutingPoint }) {
   const { colors } = useTheme();
@@ -74,7 +83,7 @@ export function MarkersScreen() {
   };
 
   if (isPending && totalCount === 0) {
-    return <LoadingState message="Loading markers…" testID="markers-loading" />;
+    return <LoadingState testID="markers-loading" embedded />;
   }
 
   return (
@@ -107,9 +116,9 @@ export function MarkersScreen() {
             horizontal
             data={filterChips}
             keyExtractor={(entry) => entry.slug}
-            estimatedItemSize={80}
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.chipRow}
+            {...filterChipListVirtualization}
             renderItem={({ item }) => {
               const selected = activeFeatureSlugs.includes(item.slug);
               return (
@@ -129,9 +138,7 @@ export function MarkersScreen() {
       </View>
 
       {isLoading && markers.length === 0 ? (
-        <View style={styles.inlineLoading}>
-          <ActivityIndicator size="small" color={colors.primary} />
-        </View>
+        <LoadingState testID="markers-list-loading" embedded />
       ) : markers.length === 0 ? (
         <View style={styles.empty}>
           <Text variant="titleMedium" style={{ color: colors.onSurface }}>
@@ -148,11 +155,11 @@ export function MarkersScreen() {
         <LegendList
           data={markers}
           keyExtractor={markerListKey}
-          estimatedItemSize={96}
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => <MarkerListItem marker={item} />}
           recycleItems
           testID="markers-list"
+          {...markerListVirtualization}
         />
       )}
     </View>
@@ -202,10 +209,6 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     gap: 2,
-  },
-  inlineLoading: {
-    paddingVertical: Spacing.six,
-    alignItems: "center",
   },
   empty: {
     flex: 1,

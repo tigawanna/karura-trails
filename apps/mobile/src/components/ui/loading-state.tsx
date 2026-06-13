@@ -7,12 +7,36 @@ import { Spacing } from "@/theme";
 
 const isAndroid = process.env.EXPO_OS === "android";
 
-export type LoadingStateProps = {
-  message: string;
-  testID?: string;
+export type LoadingIndicatorSize = "small" | "large";
+
+export type LoadingIndicatorProps = {
+  size?: LoadingIndicatorSize;
 };
 
-export function LoadingState({ message, testID }: LoadingStateProps) {
+export function LoadingIndicator({ size = "large" }: LoadingIndicatorProps) {
+  const { colors } = useTheme();
+
+  if (isAndroid) {
+    return (
+      <Host
+        style={size === "small" ? styles.wavyHostSmall : styles.wavyHostLarge}
+        matchContents
+      >
+        <LinearWavyProgressIndicator color={colors.primary} />
+      </Host>
+    );
+  }
+
+  return <ActivityIndicator size={size} color={colors.primary} />;
+}
+
+export type LoadingStateProps = {
+  message?: string;
+  testID?: string;
+  embedded?: boolean;
+};
+
+export function LoadingState({ message, testID, embedded = false }: LoadingStateProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -23,24 +47,43 @@ export function LoadingState({ message, testID }: LoadingStateProps) {
         styles.root,
         {
           backgroundColor: colors.background,
-          paddingTop: insets.top,
-          paddingBottom: insets.bottom,
+          paddingTop: embedded ? 0 : insets.top,
+          paddingBottom: embedded ? 0 : insets.bottom,
         },
       ]}
     >
-      {isAndroid ? (
-        <Host style={styles.wavyHost} matchContents>
-          <LinearWavyProgressIndicator color={colors.primary} />
-        </Host>
-      ) : (
-        <ActivityIndicator size="large" color={colors.primary} />
-      )}
-      <Text
-        variant="bodyLarge"
-        style={{ color: colors.onSurfaceVariant, marginTop: Spacing.three }}
-      >
-        {message}
-      </Text>
+      <LoadingIndicator size="large" />
+      {message ? (
+        <Text
+          variant="bodyLarge"
+          style={{ color: colors.onSurfaceVariant, marginTop: Spacing.three }}
+        >
+          {message}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+export type LoadingOverlayProps = {
+  message?: string;
+  testID?: string;
+};
+
+export function LoadingOverlay({ message, testID }: LoadingOverlayProps) {
+  const { colors } = useTheme();
+
+  return (
+    <View
+      testID={testID}
+      style={[StyleSheet.absoluteFill, styles.overlay, { backgroundColor: colors.backdrop }]}
+    >
+      <LoadingIndicator size="large" />
+      {message ? (
+        <Text variant="bodyMedium" style={{ color: colors.onSurface, marginTop: Spacing.two }}>
+          {message}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -51,7 +94,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  wavyHost: {
+  overlay: {
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 10,
+  },
+  wavyHostLarge: {
     width: 200,
+  },
+  wavyHostSmall: {
+    width: 120,
   },
 });

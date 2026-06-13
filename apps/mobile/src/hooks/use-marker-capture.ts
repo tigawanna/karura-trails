@@ -119,7 +119,7 @@ export function useMarkerCapture({ initialDraft, onSaved }: UseMarkerCaptureOpti
       });
     },
     meta: {
-      invalidates: [[queryKeyPrefixes.capturedPoints]],
+      invalidates: [[queryKeyPrefixes.capturedPoints], [queryKeyPrefixes.pendingSyncEvents]],
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: [queryKeyPrefixes.capturedPoints] });

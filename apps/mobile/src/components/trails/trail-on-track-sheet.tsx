@@ -5,6 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { LoadingIndicator } from "@/components/ui/loading-state";
 import type { MarkerProximityMatch } from "@/hooks/use-trail-on-track";
 import { markerLabel } from "@/geo/nearest-marker";
 import { Spacing } from "@/theme";
@@ -63,9 +64,9 @@ export function TrailOnTrackSheet({
         >
           <View style={styles.peekRow}>
             {isLoading ? (
-              <Text variant="titleMedium" style={{ color: colors.onSurface }}>
-                Locating…
-              </Text>
+              <View style={styles.loadingRow}>
+                <LoadingIndicator size="small" />
+              </View>
             ) : locationUnavailable ? (
               <View style={styles.peekMain}>
                 <View style={styles.locationRow}>
@@ -140,6 +141,12 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: Spacing.three,
     minHeight: 48,
+  },
+  loadingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.three,
+    flex: 1,
   },
   peekMain: {
     flex: 1,

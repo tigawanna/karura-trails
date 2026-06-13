@@ -1,12 +1,13 @@
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { ActivityIndicator, Button, Chip, Searchbar, Text, useTheme } from "react-native-paper";
+import { Button, Chip, Searchbar, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { findRouteAlternatives } from "@/geo/graph/neighbor-graph";
 import { markerLabel } from "@/geo/nearest-marker";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
+import { LoadingIndicator } from "@/components/ui/loading-state";
 import { useMarkerSearch } from "@/hooks/use-marker-search";
 import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 import { formatRouteDistance } from "@/lib/navigation/route-params";
@@ -152,7 +153,7 @@ export function NavigationBottomSheet({
             </Text>
             {isComputing ? (
               <View style={styles.computingRow}>
-                <ActivityIndicator size="small" color={colors.primary} />
+                <LoadingIndicator size="small" />
               </View>
             ) : (
               <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>

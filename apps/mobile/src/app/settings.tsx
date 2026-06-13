@@ -16,10 +16,6 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}
       contentInsetAdjustmentBehavior="automatic"
       showsVerticalScrollIndicator={false}>
-      <Text variant="headlineSmall" style={{ color: colors.onSurface, fontWeight: "700" }}>
-        Settings
-      </Text>
-
       <AppearanceSettings />
 
       {isDevBuild() ? (
@@ -46,7 +42,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     gap: Spacing.four,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.four,
+    paddingTop: Spacing.two,
     paddingBottom: Spacing.six,
   },
   devSection: {

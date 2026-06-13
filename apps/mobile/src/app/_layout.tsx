@@ -8,6 +8,7 @@ import { PaperProvider, useTheme } from "react-native-paper";
 
 import { AnimatedSplashOverlay } from "@/components/splash/animated-icon";
 import { MarkerActionMenuHost } from "@/components/map/marker-action-menu-host";
+import { DrawerRoutePrefetch } from "@/components/navigation/drawer-route-prefetch";
 import { useLocationWatcher } from "@/hooks/use-location-watcher";
 import { InitDatabase } from "@/lib/drizzle/InitDatabase";
 import { queryClient } from "@/lib/tanstack/query/client";
@@ -46,17 +47,17 @@ function DrawerNavigator() {
         }}
       />
       <Drawer.Screen
-        name="navigate"
-        options={{
-          drawerLabel: "Navigate",
-          title: "Navigate",
-        }}
-      />
-      <Drawer.Screen
         name="trails"
         options={{
           drawerLabel: "Markers",
           title: "Markers",
+        }}
+      />
+      <Drawer.Screen
+        name="sync-queue"
+        options={{
+          drawerLabel: "Pending sync",
+          title: "Pending sync",
         }}
       />
       <Drawer.Screen
@@ -91,6 +92,7 @@ export default function RootLayout() {
             <LocationWatcherHost />
             <InitDatabase>
               <AnimatedSplashOverlay />
+              <DrawerRoutePrefetch />
               <DrawerNavigator />
               <MarkerActionMenuHost />
               <StatusBar style={isDarkMode ? "light" : "dark"} />

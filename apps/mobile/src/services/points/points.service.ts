@@ -1,5 +1,6 @@
 import { db } from "@/lib/drizzle/client";
 import { points, type PointCategory, type PointSelect } from "@/lib/drizzle/schema";
+import { recordPointSyncEvent } from "@/lib/sync/outbound-sync-events";
 import type { ElevationSource } from "@/services/elevation/elevation.service";
 import { inferElevationAtPoint } from "@/services/elevation/elevation.service";
 
@@ -88,6 +89,8 @@ export async function createMarker(input: CreateMarkerInput): Promise<PointSelec
   if (!created) {
     throw new Error("Failed to save marker");
   }
+
+  await recordPointSyncEvent(created, "create");
 
   return created;
 }

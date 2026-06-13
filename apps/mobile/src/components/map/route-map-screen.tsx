@@ -226,7 +226,7 @@ export function RouteMapScreen() {
   );
 
   if (isLoading || !hydrated) {
-    return <LoadingState message="Loading route…" testID="route-map-loading" />;
+    return <LoadingState testID="route-map-loading" embedded />;
   }
 
   if (!navigation.isNavigating && navigation.toPointId == null) {

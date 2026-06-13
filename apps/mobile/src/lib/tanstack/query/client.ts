@@ -7,6 +7,7 @@ export const queryKeyPrefixes = {
   landmarkTypes: "landmark-types",
   deviceLocation: "device-location",
   devLocationSpoof: "dev-location-spoof",
+  pendingSyncEvents: "pending-sync-events",
 } as const;
 
 type QueryKey = [(typeof queryKeyPrefixes)[keyof typeof queryKeyPrefixes], ...(readonly unknown[])];

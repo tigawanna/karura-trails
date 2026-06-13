@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { capturedPointsQueryOptions } from "@/data-access-layer/points";
-import { AddMarkerFab } from "@/components/map/add-marker-fab";
+import { MapAppMenu } from "@/components/map/map-app-menu";
 import { MapBackToRouteButton } from "@/components/map/map-back-to-route-button";
 import { KaruraMap } from "@/components/map/karura-map";
 import { MapLocationControls } from "@/components/map/map-location-controls";
@@ -13,7 +13,6 @@ import {
   markerDistanceFromLocation,
 } from "@/components/map/marker-detail-sheet";
 import { NavigationBottomSheet } from "@/components/map/navigation-bottom-sheet";
-import { MapDrawerButton } from "@/components/map/map-drawer-button";
 import { MarkerCaptureSheet } from "@/components/markers/marker-capture-sheet";
 import { TrailOnTrackSheet } from "@/components/trails/trail-on-track-sheet";
 import { markerLabel, pointCoordinates, isNearKarura } from "@/geo/nearest-marker";
@@ -318,7 +317,7 @@ export function MapWithTrailSheet() {
         onMarkerLongPress={handleMarkerLongPress}
         onUserInteraction={handleUserInteraction}
       />
-      <MapDrawerButton />
+      <MapAppMenu onAddMarker={handleAddMarker} />
       <MapMarkerSearch onSelectMarker={handleSearchSelectMarker} />
       <MapBackToRouteButton visible={isViewingOffRoute} onPress={handleBackToRoute} />
       <MapLocationControls
@@ -327,7 +326,6 @@ export function MapWithTrailSheet() {
         onRecenter={handleRecenter}
         onRefresh={handleRefreshLocation}
       />
-      <AddMarkerFab onPress={handleAddMarker} />
       {showNavigationSheet ? (
         <NavigationBottomSheet
           fromPoint={fromPoint}

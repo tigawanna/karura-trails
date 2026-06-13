@@ -5,6 +5,10 @@ import {
   enrichedRoutingPointsQueryOptions,
   neighborLinksQueryOptions,
 } from "@/data-access-layer/routing-graph";
+import {
+  pendingSyncCountQueryOptions,
+  pendingSyncEventsQueryOptions,
+} from "@/data-access-layer/sync-queue";
 import migrations from "@/drizzle/migrations";
 import { queryClient } from "@/lib/tanstack/query/client";
 import { bootstrapSyncData } from "@/lib/sync/bootstrap-sync-data";
@@ -54,6 +58,8 @@ async function runDatabaseBootstrap(): Promise<void> {
         queryClient.prefetchQuery(enrichedRoutingPointsQueryOptions),
         queryClient.prefetchQuery(neighborLinksQueryOptions),
         queryClient.prefetchQuery(landmarkTypesQueryOptions),
+        queryClient.prefetchQuery(pendingSyncEventsQueryOptions),
+        queryClient.prefetchQuery(pendingSyncCountQueryOptions),
       ]);
     } catch (err) {
       const nextError = err instanceof Error ? err : new Error(String(err));
@@ -117,7 +123,7 @@ export function InitDatabase({ children }: InitDatabaseProps) {
   }
 
   if (!success) {
-    return <LoadingState message="Running migrations…" testID="init-db-migrating" />;
+    return <LoadingState testID="init-db-migrating" />;
   }
 
   if (initError) {
@@ -131,7 +137,7 @@ export function InitDatabase({ children }: InitDatabaseProps) {
   }
 
   if (!ready) {
-    return <LoadingState message="Preparing database…" testID="init-db-loading" />;
+    return <LoadingState testID="init-db-loading" />;
   }
 
   return children;

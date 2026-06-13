@@ -9,7 +9,11 @@ import { ClearSearchFiltersButton } from "@/components/common/clear-search-filte
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
 import { markerLabel, pointCoordinates } from "@/geo/nearest-marker";
 import { useMarkerSearch } from "@/hooks/use-marker-search";
+import { legendListVirtualizationProps } from "@/lib/legend-list/virtualization-props";
 import { Spacing } from "@/theme";
+
+const SEARCH_RESULT_ESTIMATED_SIZE = 56;
+const searchResultListVirtualization = legendListVirtualizationProps(SEARCH_RESULT_ESTIMATED_SIZE);
 
 interface MapMarkerSearchProps {
   onSelectMarker: (marker: EnrichedRoutingPoint) => void;
@@ -80,8 +84,8 @@ export function MapMarkerSearch({ onSelectMarker }: MapMarkerSearchProps) {
           <LegendList
             data={results}
             keyExtractor={(marker) => String(marker.id)}
-            estimatedItemSize={56}
             keyboardShouldPersistTaps="handled"
+            {...searchResultListVirtualization}
             renderItem={({ item }) => {
               const coordinates = pointCoordinates(item);
               return (
