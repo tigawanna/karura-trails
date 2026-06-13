@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "icon": "./icon.png",
+    "splash": {
+      "image": "./splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#033102",
+      "imageWidth": 642
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./adaptive-icon.png",
+        "backgroundColor": "#033102"
+      }
+    },
+    "web": {
+      "favicon": "./favicon.png"
+    }
+  }
+}

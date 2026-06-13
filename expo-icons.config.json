@@ -1,0 +1,49 @@
+{
+  "source": "./expo-icons",
+  "expo": {
+    "icon": "./icon.png",
+    "splash": {
+      "image": "./splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#033102",
+      "imageWidth": 642
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./adaptive-icon.png",
+        "backgroundColor": "#033102"
+      }
+    },
+    "web": {
+      "favicon": "./favicon.png"
+    }
+  },
+  "mobile": {
+    "root": "./apps/mobile",
+    "files": {
+      "icon": "assets/images/icon.png",
+      "adaptiveIcon": "assets/images/adaptive-icon.png",
+      "splashIcon": "assets/images/splash-icon.png",
+      "favicon": "assets/images/favicon.png"
+    }
+  },
+  "web": {
+    "root": "./apps/web",
+    "files": {
+      "favicon": "public/favicon.png",
+      "appleTouchIcon": "public/apple-touch-icon.png"
+    }
+  },
+  "sync": {
+    "mobile": [
+      { "from": "expo.icon", "to": "icon" },
+      { "from": "expo.android.adaptiveIcon.foregroundImage", "to": "adaptiveIcon" },
+      { "from": "expo.splash.image", "to": "splashIcon" },
+      { "from": "expo.web.favicon", "to": "favicon" }
+    ],
+    "web": [
+      { "from": "expo.web.favicon", "to": "favicon" },
+      { "from": "expo.icon", "to": "appleTouchIcon" }
+    ]
+  }
+}
