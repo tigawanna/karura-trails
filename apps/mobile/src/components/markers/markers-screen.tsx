@@ -1,6 +1,7 @@
 import { LegendList } from "@legendapp/list/react-native";
-import { useMemo, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { useRouter } from "expo-router";
+import { useCallback, useMemo, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Card, Chip, Searchbar, Text, useTheme } from "react-native-paper";
 import { useQuery } from "@tanstack/react-query";
 
@@ -21,11 +22,22 @@ const filterChipListVirtualization = legendListVirtualizationProps(
   "horizontal",
 );
 
-function MarkerListItem({ marker }: { marker: EnrichedRoutingPoint }) {
+function MarkerListItem({
+  marker,
+  onPress,
+}: {
+  marker: EnrichedRoutingPoint;
+  onPress: () => void;
+}) {
   const { colors } = useTheme();
 
   return (
-    <Card style={styles.card} testID={`marker-card-${marker.id}`}>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [pressed && styles.cardPressed]}
+      testID={`marker-card-${marker.id}`}
+    >
+      <Card style={styles.card}>
       <Card.Content style={styles.cardContent}>
         <Text variant="titleMedium" style={{ color: colors.onSurface }}>
           {marker.ref ?? marker.name ?? `#${marker.id}`}
@@ -47,12 +59,14 @@ function MarkerListItem({ marker }: { marker: EnrichedRoutingPoint }) {
           </Text>
         ) : null}
       </Card.Content>
-    </Card>
+      </Card>
+    </Pressable>
   );
 }
 
 export function MarkersScreen() {
   const { colors } = useTheme();
+  const router = useRouter();
   const { isPending } = useQuery({
     ...enrichedRoutingPointsQueryOptions,
     placeholderData: (previous) => previous,
@@ -82,6 +96,16 @@ export function MarkersScreen() {
     setActiveFeatureSlugs([]);
   };
 
+  const handleMarkerPress = useCallback(
+    (marker: EnrichedRoutingPoint) => {
+      router.navigate({
+        pathname: "/",
+        params: { markerId: String(marker.id) },
+      });
+    },
+    [router],
+  );
+
   if (isPending && totalCount === 0) {
     return <LoadingState testID="markers-loading" embedded />;
   }
@@ -102,7 +126,7 @@ export function MarkersScreen() {
           />
         </View>
         <Searchbar
-          placeholder="Search by name, ref, or landmark type…"
+          placeholder="Search markers…"
           value={searchQuery}
           onChangeText={setSearchQuery}
           style={[styles.searchbar, { backgroundColor: colors.surfaceVariant }]}
@@ -156,7 +180,9 @@ export function MarkersScreen() {
           data={markers}
           keyExtractor={markerListKey}
           contentContainerStyle={styles.listContent}
-          renderItem={({ item }) => <MarkerListItem marker={item} />}
+          renderItem={({ item }) => (
+            <MarkerListItem marker={item} onPress={() => handleMarkerPress(item)} />
+          )}
           recycleItems
           testID="markers-list"
           {...markerListVirtualization}
@@ -206,6 +232,9 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: "transparent",
+  },
+  cardPressed: {
+    opacity: 0.7,
   },
   cardContent: {
     gap: 2,

@@ -136,20 +136,18 @@ const styles = StyleSheet.create({
     gap: Spacing.three,
   },
   peekRow: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    gap: Spacing.three,
+    justifyContent: "center",
     minHeight: 48,
   },
   loadingRow: {
-    flexDirection: "row",
+    width: "100%",
     alignItems: "center",
-    gap: Spacing.three,
-    flex: 1,
+    justifyContent: "center",
+    minHeight: 48,
   },
   peekMain: {
-    flex: 1,
+    width: "100%",
     gap: Spacing.half,
   },
   locationRow: {

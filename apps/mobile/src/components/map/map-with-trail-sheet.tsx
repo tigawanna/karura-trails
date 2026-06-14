@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import { capturedPointsQueryOptions } from "@/data-access-layer/points";
@@ -32,6 +33,9 @@ import {
 import { useNavigationStore } from "@/stores/navigation-store";
 
 export function MapWithTrailSheet() {
+  const router = useRouter();
+  const { markerId: markerIdParam } = useLocalSearchParams<{ markerId?: string }>();
+  const pendingMarkerIdRef = useRef<number | null>(null);
   const {
     location: staticLocation,
     errorMsg,
@@ -78,6 +82,34 @@ export function MapWithTrailSheet() {
       setHighlightedRoutePointId(null);
     }
   }, [showNavigationSheet]);
+
+  useEffect(() => {
+    if (!markerIdParam) {
+      return;
+    }
+
+    const markerId = Number.parseInt(String(markerIdParam), 10);
+    if (!Number.isFinite(markerId)) {
+      router.setParams({ markerId: undefined });
+      return;
+    }
+
+    pendingMarkerIdRef.current = markerId;
+    router.setParams({ markerId: undefined });
+  }, [markerIdParam, router]);
+
+  useEffect(() => {
+    const markerId = pendingMarkerIdRef.current;
+    if (markerId == null || !pointsById.has(markerId)) {
+      return;
+    }
+
+    pendingMarkerIdRef.current = null;
+    setFollowUser(false);
+    setPinnedCameraPointId(markerId);
+    setOverlayMarkerId(markerId);
+    setHighlightedRoutePointId(null);
+  }, [pointsById]);
 
   const overlayMarker = useMemo((): EnrichedRoutingPoint | null => {
     if (overlayMarkerId == null) {

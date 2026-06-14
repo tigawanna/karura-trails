@@ -19,7 +19,10 @@ export function LoadingIndicator({ size = "large" }: LoadingIndicatorProps) {
   if (isAndroid) {
     return (
       <Host
-        style={size === "small" ? styles.wavyHostSmall : styles.wavyHostLarge}
+        style={[
+          size === "small" ? styles.wavyHostSmall : styles.wavyHostLarge,
+          styles.wavyHost,
+        ]}
         matchContents
       >
         <LinearWavyProgressIndicator color={colors.primary} />
@@ -104,5 +107,8 @@ const styles = StyleSheet.create({
   },
   wavyHostSmall: {
     width: 120,
+  },
+  wavyHost: {
+    alignSelf: "center",
   },
 });

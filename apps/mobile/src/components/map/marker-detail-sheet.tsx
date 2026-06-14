@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
     gap: Spacing.two,
   },
   loadingContent: {
-    flex: 1,
+    width: "100%",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: Spacing.four,
