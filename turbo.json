@@ -24,6 +24,10 @@
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "dev:pglite-proxy": {
+      "cache": false,
+      "persistent": true
     }
   }
 }

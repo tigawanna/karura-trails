@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev dev:pglite-proxy --filter=web",
     "lint": "vp lint .",
     "lint:fix": "vp lint --fix .",
     "format": "vp fmt .",
@@ -13,6 +13,9 @@
     "quality:fix": "turbo run //#lint:fix //#format:fix",
     "prepare": "vp config",
     "db:studio": "pnpm --filter web db:studio",
+    "db:studio:d1": "pnpm --filter web db:studio:d1",
+    "db:studio:pglite": "pnpm --filter web db:studio:pglite",
+    "db:pglite:proxy": "pnpm --filter web db:pglite:proxy",
     "sync:icons": "tsx ./scripts/generate-expo-icons.ts && tsx ./scripts/sync-expo-icons.ts",
     "generate:icons": "tsx ./scripts/generate-expo-icons.ts"
   },
