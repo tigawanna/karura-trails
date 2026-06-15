@@ -71,7 +71,7 @@ export async function listMapPoints(db: PgliteDb, mapId: number): Promise<MapPoi
     .from(mapPointTable)
     .where(eq(mapPointTable.mapId, mapId))
     .orderBy(asc(mapPointTable.sortOrder), asc(mapPointTable.id));
-
+  //  console.log("rows == ", rows);
   return rows.map(toRecord);
 }
 
