@@ -13,7 +13,7 @@ import {
   type MapHandle,
 } from "@/lib/map/map-handle";
 import type { MapViewport } from "@/types/map/maps";
-import { usePickModifierHeld } from "@/lib/map/pick-modifier";
+import { isPickModifierEvent, usePickModifierHeld } from "@/lib/map/pick-modifier";
 import { lineStringToLatLngs, segmentGroupColor } from "@/lib/map/segment-utils";
 import type { GeoSegmentRecord } from "@/types/map/geo-segments";
 import type { MapPointRecord } from "@/types/map/map-points";
@@ -107,6 +107,8 @@ export function LeafletMapPane({
   const onMapPointPlaceRef = useRef(onMapPointPlace);
   const onMapPointMoveRef = useRef(onMapPointMove);
   const onSegmentClickRef = useRef(onSegmentClick);
+  const placementModeRef = useRef(placementMode);
+  const linkModeRef = useRef(linkMode);
   const [mapReady, setMapReady] = useState(false);
   const pickModifierHeld = usePickModifierHeld();
 
@@ -116,6 +118,8 @@ export function LeafletMapPane({
   onMapPointPlaceRef.current = onMapPointPlace;
   onMapPointMoveRef.current = onMapPointMove;
   onSegmentClickRef.current = onSegmentClick;
+  placementModeRef.current = placementMode;
+  linkModeRef.current = linkMode;
 
   useEffect(() => {
     geocodedRef.current = false;
@@ -181,7 +185,13 @@ export function LeafletMapPane({
       map.on("zoomend", emitViewportChange);
 
       map.on("click", (event) => {
-        if (placementMode && onMapPointPlaceRef.current) {
+        const modifiers = {
+          ctrlKey: event.originalEvent.ctrlKey,
+          metaKey: event.originalEvent.metaKey,
+        };
+        const shouldPlaceMarker =
+          placementModeRef.current || (linkModeRef.current && isPickModifierEvent(modifiers));
+        if (shouldPlaceMarker && onMapPointPlaceRef.current) {
           onMapPointPlaceRef.current(event.latlng.lat, event.latlng.lng);
         }
       });
@@ -206,7 +216,7 @@ export function LeafletMapPane({
     return () => {
       disposed = true;
     };
-  }, [workspace.id, workspace.baseMapStyle, workspace.locationQuery, placementMode]);
+  }, [workspace.id, workspace.baseMapStyle, workspace.locationQuery]);
 
   useEffect(() => {
     if (!mapReady || !mapRef.current || !segmentsLayerRef.current) {
@@ -359,7 +369,7 @@ export function LeafletMapPane({
                     ? String(chainIndex + 1)
                     : (point.ref ?? ""),
           linkMode,
-          markerCursor: pickModifierHeld ? "grab" : "pointer",
+          markerCursor: pickModifierHeld && !linkMode ? "grab" : "pointer",
         });
 
         const icon = L.divIcon({
@@ -371,7 +381,7 @@ export function LeafletMapPane({
 
         const marker = L.marker([point.latitude, point.longitude], {
           icon,
-          draggable: pickModifierHeld,
+          draggable: pickModifierHeld && !linkMode,
         });
 
         marker.on("click", (event) => {
@@ -411,5 +421,19 @@ export function LeafletMapPane({
     showNeighborCoverage,
   ]);
 
-  return <div ref={containerRef} className="h-full w-full" data-test="leaflet-map-pane" />;
+  const mapCursor =
+    placementMode || (linkMode && pickModifierHeld)
+      ? "crosshair"
+      : linkMode
+        ? "default"
+        : undefined;
+
+  return (
+    <div
+      ref={containerRef}
+      className="h-full w-full"
+      data-test="leaflet-map-pane"
+      style={mapCursor ? { cursor: mapCursor } : undefined}
+    />
+  );
 }

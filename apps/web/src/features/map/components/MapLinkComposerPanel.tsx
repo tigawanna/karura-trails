@@ -39,7 +39,8 @@ export function MapLinkComposerPanel({
           <h2 className="text-sm font-semibold">Link composer</h2>
         </div>
         <p className="text-xs text-base-content/55">
-          Ctrl/Cmd+click markers on the map to build a chain, or use the route planner below.
+          Ctrl/Cmd+click the map to add a marker, or Ctrl/Cmd+click existing markers to build a
+          chain. Turn on Add marker (P) to place markers with a normal click.
         </p>
       </div>
 

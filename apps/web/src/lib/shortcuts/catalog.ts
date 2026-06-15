@@ -44,9 +44,7 @@ export const SHORTCUT_CATALOG: readonly ShortcutDefinition[] = [
   defineShortcut(SHORTCUT_IDS.toggleSegments, "Mod+Shift+S", "Toggle trail segments overlay", [
     "mapWorkspace",
   ]),
-  defineShortcut(SHORTCUT_IDS.togglePlacementMode, "P", "Toggle place-marker mode", [
-    "mapWorkspace",
-  ]),
+  defineShortcut(SHORTCUT_IDS.togglePlacementMode, "P", "Toggle add-marker mode", ["mapWorkspace"]),
   defineShortcut(SHORTCUT_IDS.toggleLinkMode, "L", "Toggle link mode", ["mapWorkspace"]),
   defineShortcut(SHORTCUT_IDS.toggleGraphPreview, "G", "Toggle graph preview panel", [
     "mapWorkspace",
@@ -60,12 +58,15 @@ export const SHORTCUT_CATALOG: readonly ShortcutDefinition[] = [
   defineShortcut(
     SHORTCUT_IDS.linkChainPick,
     "Mod+Click",
-    "Add marker to link chain (link mode on)",
+    "Add marker or extend link chain (link mode on)",
     ["mapTips"],
   ),
-  defineShortcut(SHORTCUT_IDS.dragMarker, "Hold Mod", "Drag a marker to reposition it on the map", [
-    "mapTips",
-  ]),
+  defineShortcut(
+    SHORTCUT_IDS.dragMarker,
+    "Hold Mod",
+    "Drag a marker to reposition (outside link mode)",
+    ["mapTips"],
+  ),
 ];
 
 export function getCatalogEntriesForCategory(

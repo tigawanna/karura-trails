@@ -138,26 +138,14 @@ export function MapWorkspaceToolbar({
             <DropdownMenuLabel>Map tools</DropdownMenuLabel>
             <DropdownMenuCheckboxItem
               checked={placementMode}
-              onCheckedChange={(checked) => {
-                const next = checked === true;
-                onPlacementModeChange(next);
-                if (next) {
-                  onLinkModeChange(false);
-                }
-              }}
+              onCheckedChange={(checked) => onPlacementModeChange(checked === true)}
             >
-              Place marker
+              Add marker
               <MapShortcut shortcutId={SHORTCUT_IDS.togglePlacementMode} />
             </DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem
               checked={linkMode}
-              onCheckedChange={(checked) => {
-                const next = checked === true;
-                onLinkModeChange(next);
-                if (next) {
-                  onPlacementModeChange(false);
-                }
-              }}
+              onCheckedChange={(checked) => onLinkModeChange(checked === true)}
             >
               Link mode
               <MapShortcut shortcutId={SHORTCUT_IDS.toggleLinkMode} />

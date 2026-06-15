@@ -376,15 +376,9 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
     onToggleSegments: () => setShowSegments(!showSegments),
     onTogglePlacementMode: () => {
       setPlacementMode(!placementMode);
-      if (!placementMode) {
-        setLinkMode(false);
-      }
     },
     onToggleLinkMode: () => {
       setLinkMode(!linkMode);
-      if (!linkMode) {
-        setPlacementMode(false);
-      }
     },
     onToggleGraphPreview: handleToggleGraphPreview,
     onOpenMarkerEditor: () => {
@@ -481,7 +475,9 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
       await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.markerNeighbors(mapId) });
       await queryClient.invalidateQueries({ queryKey: pgliteQueryKeys.localEvents() });
       setCaptureDraft(null);
-      setPlacementMode(false);
+      if (!linkMode) {
+        setPlacementMode(false);
+      }
       if (insertBetween) {
         toast.success(
           `Saved "${point.name ?? draft.name}" between ${insertBetween.fromRef} and ${insertBetween.toRef}.`,
@@ -593,15 +589,26 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
   );
 
   const mapLegendHints =
-    graphPreviewOpen || hideVirtualMarkers ? (
-      <div className="pointer-events-none absolute inset-x-0 bottom-3 z-[1000] flex flex-col items-start gap-1 px-3">
+    graphPreviewOpen || hideVirtualMarkers || placementMode || linkMode ? (
+      <div className="pointer-events-none absolute inset-x-0 bottom-3 z-1000 flex flex-col items-start gap-1 px-3">
+        {placementMode ? (
+          <div className="max-w-88 rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm">
+            Add marker mode: click the map to drop a marker. Press P or Esc to exit.
+          </div>
+        ) : null}
+        {linkMode ? (
+          <div className="max-w-88 rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm">
+            Link mode: Ctrl/Cmd+click the map to add a marker, or Ctrl/Cmd+click existing markers to
+            extend the chain.
+          </div>
+        ) : null}
         {graphPreviewOpen ? (
           <div className="max-w-[18rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm">
             Dashed lines are virtual graph preview edges (not saved).
           </div>
         ) : null}
         {hideVirtualMarkers ? (
-          <div className="max-w-[14rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm">
+          <div className="max-w-56 rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm">
             Virtual markers are hidden. Selected markers stay visible.
           </div>
         ) : null}
@@ -716,7 +723,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
             {mapLegendHints}
           </div>
           {linkMode ? (
-            <div className="absolute inset-y-0 right-0 z-[1100] flex w-96 flex-col border-l border-base-content/10 bg-base-100 shadow-xl">
+            <div className="absolute inset-y-0 right-0 z-1100 flex w-96 flex-col border-l border-base-content/10 bg-base-100 shadow-xl">
               <div className="flex items-center justify-between border-b border-base-content/10 px-3 py-2">
                 <span className="text-sm font-semibold">Link composer</span>
                 <button
@@ -735,7 +742,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
             </div>
           ) : null}
           {graphPreviewOpen ? (
-            <div className="absolute inset-y-0 right-0 z-[1150] w-96 shadow-xl">
+            <div className="absolute inset-y-0 right-0 z-1150 w-96 shadow-xl">
               <MapGraphPreviewPanel
                 pathGroups={pathGroups}
                 previews={graphPreviews}
@@ -747,7 +754,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
             </div>
           ) : null}
           {selection && !linkMode && !graphPreviewOpen ? (
-            <div className="absolute inset-y-0 right-0 z-[1200] flex w-80 flex-col border-l border-base-content/10 bg-base-100 shadow-xl">
+            <div className="absolute inset-y-0 right-0 z-1200 flex w-80 flex-col border-l border-base-content/10 bg-base-100 shadow-xl">
               <div className="flex items-center justify-between border-b border-base-content/10 px-3 py-2">
                 <span className="text-sm font-semibold">Details</span>
                 <button
@@ -797,7 +804,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
                     {mapPane}
                     {graphPreviewOpen ? (
                       <div
-                        className={`pointer-events-none absolute left-3 z-[1000] max-w-[18rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm ${showNeighborCoverage ? "bottom-12" : "bottom-3"}`}
+                        className={`pointer-events-none absolute left-3 z-1000 max-w-[18rem] rounded-md bg-base-100/92 px-2.5 py-1.5 text-[10px] text-base-content/65 shadow-sm ${showNeighborCoverage ? "bottom-12" : "bottom-3"}`}
                       >
                         Dashed lines are virtual graph preview edges (not saved).
                       </div>
@@ -812,7 +819,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
                 </Panel>
               </Group>
               {graphPreviewOpen ? (
-                <div className="absolute inset-y-0 right-0 z-[1150] w-96 shadow-xl">
+                <div className="absolute inset-y-0 right-0 z-1150 w-96 shadow-xl">
                   <MapGraphPreviewPanel
                     pathGroups={pathGroups}
                     previews={graphPreviews}
@@ -829,7 +836,7 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
       )}
 
       {statusMessage ? (
-        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-[1500] flex justify-center px-4">
+        <div className="pointer-events-none fixed inset-x-0 bottom-4 z-1500 flex justify-center px-4">
           <div className="pointer-events-auto flex max-w-lg items-start gap-2 rounded-lg border border-base-content/10 bg-base-100 px-4 py-3 text-sm shadow-lg">
             <span className="flex-1">{statusMessage}</span>
             <button

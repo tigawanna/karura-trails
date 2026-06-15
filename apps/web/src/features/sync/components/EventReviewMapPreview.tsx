@@ -220,7 +220,7 @@ export function EventReviewMapPreview({
       <button
         type="button"
         aria-label="Open map full screen"
-        className="absolute top-3 right-3 z-[1000] inline-flex h-8 w-8 items-center justify-center rounded-md border border-base-300 bg-base-100/95 text-base-content shadow-sm hover:bg-base-100"
+        className="absolute top-3 right-3 z-1000 inline-flex h-8 w-8 items-center justify-center rounded-md border border-base-300 bg-base-100/95 text-base-content shadow-sm hover:bg-base-100"
         onClick={openFullscreen}
       >
         <Maximize2 className="h-4 w-4" />
