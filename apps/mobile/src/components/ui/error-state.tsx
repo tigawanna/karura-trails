@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { SymbolView } from "expo-symbols";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { Text, useTheme } from "react-native-paper";
@@ -9,6 +10,7 @@ export type ErrorStateProps = {
   title: string;
   message: string;
   testID?: string;
+  action?: ReactNode;
 };
 
 const errorIcon = {
@@ -17,7 +19,7 @@ const errorIcon = {
   web: "warning",
 } as const;
 
-export function ErrorState({ title, message, testID }: ErrorStateProps) {
+export function ErrorState({ title, message, testID, action }: ErrorStateProps) {
   const { colors } = useTheme();
   const appTheme = useAppTheme();
   const insets = useSafeAreaInsets();
@@ -61,6 +63,7 @@ export function ErrorState({ title, message, testID }: ErrorStateProps) {
             {message}
           </Text>
         </ScrollView>
+        {action}
       </View>
     </View>
   );

@@ -19,6 +19,23 @@ export function showMarkerActionMenu(input: {
   presentMarkerActionMenu(input);
 }
 
+export function showMapLocationActionMenu(input: {
+  title: string;
+  actions: MarkerActionMenuItem[];
+}) {
+  showMarkerActionMenu({ markerLabel: input.title, actions: input.actions });
+}
+
+export function buildMapLocationActions(input: {
+  onDropMarker: () => void;
+  onSetLocationHere: () => void;
+}): MarkerActionMenuItem[] {
+  return [
+    { label: "Drop a marker", onPress: input.onDropMarker },
+    { label: "I am here", onPress: input.onSetLocationHere },
+  ];
+}
+
 export function confirmStartNavigationTo(markerLabel: string, onConfirm: () => void) {
   Alert.alert(`Navigate to ${markerLabel}?`, "Start navigation to this marker?", [
     { text: "Cancel", style: "cancel" },

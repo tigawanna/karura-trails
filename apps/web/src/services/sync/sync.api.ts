@@ -1,4 +1,25 @@
-import type { SyncEventsListResponse, SyncEventRecord, SyncPullResponse } from "@/types/sync";
+import type {
+  SyncEventsListResponse,
+  SyncEventRecord,
+  SyncPullResponse,
+  VerifySyncEventChanges,
+} from "@/types/sync";
+
+export async function fetchPendingSyncEvents(limit = 200): Promise<SyncEventsListResponse> {
+  const params = new URLSearchParams({
+    pendingOnly: "true",
+    limit: String(limit),
+  });
+  const response = await fetch(`/api/sync/events?${params.toString()}`, {
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load pending sync events");
+  }
+
+  return response.json() as Promise<SyncEventsListResponse>;
+}
 
 export async function fetchAdminSyncEvents(
   after?: string | null,
@@ -53,10 +74,21 @@ export async function fetchUpstreamSyncEventsPreview(
   return fetchSyncEventsPull(after, page, limit);
 }
 
-export async function verifySyncEvent(eventId: string): Promise<void> {
+export type { VerifySyncEventChanges } from "@/types/sync";
+
+export async function verifySyncEvent(
+  eventId: string,
+  changes?: VerifySyncEventChanges,
+): Promise<void> {
   const response = await fetch(`/api/sync/events/${eventId}/verify`, {
     method: "PATCH",
     credentials: "include",
+    ...(changes
+      ? {
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(changes),
+        }
+      : {}),
   });
 
   if (!response.ok) {

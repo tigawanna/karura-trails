@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Alert, StyleSheet, View } from "react-native";
 
 import { capturedPointsQueryOptions } from "@/data-access-layer/points";
+import { landmarkTypesQueryOptions } from "@/data-access-layer/landmark-types";
 import { MapAppMenu } from "@/components/map/map-app-menu";
 import { MapBackToRouteButton } from "@/components/map/map-back-to-route-button";
 import { KaruraMap } from "@/components/map/karura-map";
@@ -15,9 +16,12 @@ import {
 } from "@/components/map/marker-detail-sheet";
 import { NavigationBottomSheet } from "@/components/map/navigation-bottom-sheet";
 import { MarkerCaptureSheet } from "@/components/markers/marker-capture-sheet";
+import { MarkerEditSheet } from "@/components/markers/marker-edit-sheet";
 import { TrailOnTrackSheet } from "@/components/trails/trail-on-track-sheet";
 import { markerLabel, pointCoordinates, isNearKarura } from "@/geo/nearest-marker";
-import type { EnrichedRoutingPoint } from "@/geo/point-record";
+import { enrichRoutingPoint, type EnrichedRoutingPoint } from "@/geo/point-record";
+import { useAdminMode } from "@/hooks/use-admin-mode";
+import { useDeleteMarker } from "@/hooks/use-delete-marker";
 import { useUserLocationHeading } from "@/hooks/use-user-location-heading";
 import { useDeviceLocation } from "@/hooks/use-device-location";
 import { useLiveLocation } from "@/hooks/use-live-location";
@@ -26,8 +30,10 @@ import { useNavigationController } from "@/hooks/use-navigation-controller";
 import { useTrailOnTrack } from "@/hooks/use-trail-on-track";
 import { useRoutingGraphData } from "@/hooks/use-routing-graph-data";
 import {
+  buildMapLocationActions,
   buildMarkerNavigationActions,
   confirmStartNavigationTo,
+  showMapLocationActionMenu,
   showMarkerActionMenu,
 } from "@/lib/ui/marker-action-menu";
 import { useNavigationStore } from "@/stores/navigation-store";
@@ -46,12 +52,19 @@ export function MapWithTrailSheet() {
   const { match, isLoading: trackLoading } = useTrailOnTrack();
   const { enrichedPoints, pointsById } = useRoutingGraphData();
   const { data: capturedPoints = [] } = useQuery(capturedPointsQueryOptions);
+  const { data: landmarkCatalog = [] } = useQuery(landmarkTypesQueryOptions);
+  const adminMode = useAdminMode();
+  const deleteMarkerMutation = useDeleteMarker(() => {
+    setOverlayMarkerId(null);
+    setPinnedCameraPointId(null);
+  });
 
   const [overlayMarkerId, setOverlayMarkerId] = useState<number | null>(null);
   const [pinnedCameraPointId, setPinnedCameraPointId] = useState<number | null>(null);
   const [highlightedRoutePointId, setHighlightedRoutePointId] = useState<number | null>(null);
   const [captureVisible, setCaptureVisible] = useState(false);
   const [captureDraft, setCaptureDraft] = useState<MarkerCaptureDraft | null>(null);
+  const [editVisible, setEditVisible] = useState(false);
   const [followUser, setFollowUser] = useState(true);
   const [recenterKey, setRecenterKey] = useState(0);
 
@@ -111,12 +124,31 @@ export function MapWithTrailSheet() {
     setHighlightedRoutePointId(null);
   }, [pointsById]);
 
+  const capturedPointsById = useMemo(
+    () => new Map(capturedPoints.map((point) => [point.id, point])),
+    [capturedPoints],
+  );
+
   const overlayMarker = useMemo((): EnrichedRoutingPoint | null => {
     if (overlayMarkerId == null) {
       return null;
     }
-    return pointsById.get(overlayMarkerId) ?? null;
-  }, [overlayMarkerId, pointsById]);
+
+    const routingMarker = pointsById.get(overlayMarkerId);
+    if (routingMarker) {
+      return routingMarker;
+    }
+
+    const capturedMarker = capturedPointsById.get(overlayMarkerId);
+    if (capturedMarker) {
+      return enrichRoutingPoint(capturedMarker, landmarkCatalog);
+    }
+
+    return null;
+  }, [capturedPointsById, landmarkCatalog, overlayMarkerId, pointsById]);
+
+  const overlayMarkerDeletable =
+    overlayMarker != null && (adminMode || overlayMarker.sourceId == null);
 
   const fromPoint = useMemo(
     () =>
@@ -139,7 +171,6 @@ export function MapWithTrailSheet() {
       highlightedRoutePointId ??
       overlayMarkerId ??
       navigation.toPointId ??
-      match?.marker.id ??
       null);
 
   const isViewingOffRoute = showNavigationSheet && pinnedCameraPointId != null && !followUser;
@@ -238,17 +269,6 @@ export function MapWithTrailSheet() {
     });
   }, [openCapture, staticLocation]);
 
-  const handleMapLongPress = useCallback(
-    (lng: number, lat: number) => {
-      openCapture({
-        lng,
-        lat,
-        gpsAltitude: staticLocation?.coords.altitude ?? null,
-      });
-    },
-    [openCapture, staticLocation?.coords.altitude],
-  );
-
   const startNavigationTo = useCallback(
     (markerId: number) => {
       const marker = pointsById.get(markerId);
@@ -264,6 +284,79 @@ export function MapWithTrailSheet() {
       setOverlayMarkerId(null);
     },
     [navigation, pointsById],
+  );
+
+  const handleMapLongPress = useCallback(
+    (lng: number, lat: number, nearbyMarkerId: number | null) => {
+      const locationActions = buildMapLocationActions({
+        onDropMarker: () =>
+          openCapture({
+            lng,
+            lat,
+            gpsAltitude: staticLocation?.coords.altitude ?? null,
+          }),
+        onSetLocationHere: () => manuallySetLocation(lat, lng),
+      });
+
+      if (nearbyMarkerId == null) {
+        showMapLocationActionMenu({
+          title: "Selected location",
+          actions: locationActions,
+        });
+        return;
+      }
+
+      const marker = pointsById.get(nearbyMarkerId);
+      if (!marker) {
+        showMapLocationActionMenu({
+          title: "Selected location",
+          actions: locationActions,
+        });
+        return;
+      }
+
+      const markerActions = buildMarkerNavigationActions({
+        markerId: nearbyMarkerId,
+        isNavigating: navigation.isNavigating,
+        isOrigin: navigation.isOrigin(nearbyMarkerId),
+        isDestination: navigation.isDestination(nearbyMarkerId),
+        isOnActiveRoute: navigation.isOnActiveRoute(nearbyMarkerId),
+        isViaPoint: navigation.isViaPoint(nearbyMarkerId),
+        isBlockedPoint: navigation.isBlockedPoint(nearbyMarkerId),
+        onNavigateTo: () =>
+          confirmStartNavigationTo(markerLabel(marker), () => startNavigationTo(nearbyMarkerId)),
+        onNavigateFrom: () => navigation.navigateFromHere(nearbyMarkerId),
+        onSetLocationHere: () => setLocationAtMarker(nearbyMarkerId),
+        onNavigateHereInstead: () => {
+          navigation.navigateToInstead(nearbyMarkerId);
+          setPinnedCameraPointId(nearbyMarkerId);
+          setOverlayMarkerId(nearbyMarkerId);
+        },
+        onRouteThroughHere: () => {
+          navigation.routeThroughHere(nearbyMarkerId);
+          setPinnedCameraPointId(nearbyMarkerId);
+          setOverlayMarkerId(nearbyMarkerId);
+        },
+        onRemoveFromRoute: () => navigation.removeFromRoute(nearbyMarkerId),
+        onRemoveViaStop: () => navigation.removeViaPoint(nearbyMarkerId),
+        onUnblockPoint: () => navigation.unblockPoint(nearbyMarkerId),
+        onViewDetails: () => setOverlayMarkerId(nearbyMarkerId),
+      }).filter((action) => action.label !== "I am here");
+
+      showMapLocationActionMenu({
+        title: `Near ${markerLabel(marker)}`,
+        actions: [...locationActions, ...markerActions],
+      });
+    },
+    [
+      manuallySetLocation,
+      navigation,
+      openCapture,
+      pointsById,
+      setLocationAtMarker,
+      startNavigationTo,
+      staticLocation?.coords.altitude,
+    ],
   );
 
   const handleMarkerPress = useCallback((markerId: number) => {
@@ -329,6 +422,47 @@ export function MapWithTrailSheet() {
   const handleSaved = useCallback(() => {
     setCaptureVisible(false);
     setCaptureDraft(null);
+  }, []);
+
+  const confirmDeleteOverlayMarker = useCallback(() => {
+    if (!overlayMarker) {
+      return;
+    }
+
+    const canDelete = adminMode || overlayMarker.sourceId == null;
+    if (!canDelete) {
+      return;
+    }
+
+    const label = markerLabel(overlayMarker);
+    const isCaptured = overlayMarker.sourceId == null;
+    Alert.alert(
+      "Delete marker?",
+      isCaptured
+        ? `Remove "${label}" from this device? Any pending sync entry for it will also be removed.`
+        : `Remove "${label}" from the local routing graph? Routes that use this marker may break until you re-import trail data.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            deleteMarkerMutation.mutate(overlayMarker.id, {
+              onError: (error: unknown) => {
+                Alert.alert(
+                  "Delete failed",
+                  error instanceof Error ? error.message : "Could not delete marker.",
+                );
+              },
+            });
+          },
+        },
+      ],
+    );
+  }, [adminMode, deleteMarkerMutation, overlayMarker]);
+
+  const handleEditSaved = useCallback(() => {
+    setEditVisible(false);
   }, []);
 
   return (
@@ -416,8 +550,18 @@ export function MapWithTrailSheet() {
             )
           }
           onClearRoute={navigation.clearNavigation}
+          deletable={overlayMarkerDeletable}
+          onDelete={confirmDeleteOverlayMarker}
+          onEdit={() => setEditVisible(true)}
+          editLabel={overlayMarker.sourceId == null ? "Edit" : "Suggest fix"}
         />
       ) : null}
+      <MarkerEditSheet
+        visible={editVisible && overlayMarker != null}
+        marker={overlayMarker}
+        onDismiss={() => setEditVisible(false)}
+        onSaved={handleEditSaved}
+      />
       <MarkerCaptureSheet
         key={
           captureDraft

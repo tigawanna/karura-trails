@@ -10,8 +10,12 @@ const VALID_CATEGORIES = new Set<PointCategory>([
   "bridge",
   "viewpoint",
   "water",
+  "lake",
+  "river",
   "cave",
   "rest_area",
+  "bench",
+  "dustbin",
   "sign",
   "custom",
 ]);

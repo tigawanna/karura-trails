@@ -4,6 +4,7 @@ import { useTheme } from "react-native-paper";
 
 import type { PointWithGeometry } from "@/data-access-layer/points";
 import { geomParse, isValidPoint } from "@/geo/geom-parse";
+import { markerLabel } from "@/geo/nearest-marker";
 
 interface CapturedPointsLayerProps {
   points: PointWithGeometry[];
@@ -31,7 +32,8 @@ export function CapturedPointsLayer({ points, draftCoordinate }: CapturedPointsL
           },
           properties: {
             id: point.id,
-            name: point.name ?? "Marker",
+            name: point.name ?? "",
+            displayLabel: markerLabel(point),
             category: point.category ?? "custom",
           },
         };
@@ -48,6 +50,7 @@ export function CapturedPointsLayer({ points, draftCoordinate }: CapturedPointsL
         properties: {
           id: "draft",
           name: "Draft",
+          displayLabel: "Draft",
           category: "draft",
         },
       });
@@ -92,6 +95,24 @@ export function CapturedPointsLayer({ points, draftCoordinate }: CapturedPointsL
           "circle-color": colors.tertiary,
           "circle-stroke-width": 2,
           "circle-stroke-color": colors.surface,
+        }}
+      />
+      <Layer
+        type="symbol"
+        id="captured-points-labels"
+        filter={["!=", ["get", "displayLabel"], ""]}
+        paint={{
+          "text-color": colors.onBackground,
+          "text-halo-color": colors.background,
+          "text-halo-width": 1.5,
+        }}
+        layout={{
+          "text-field": ["get", "displayLabel"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10,
+          "text-offset": [0, 1.2],
+          "text-anchor": "top",
+          "text-allow-overlap": false,
         }}
       />
     </GeoJSONSource>

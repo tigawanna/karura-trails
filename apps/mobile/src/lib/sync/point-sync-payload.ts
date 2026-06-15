@@ -1,3 +1,4 @@
+import { parsePointMetadata } from "@/geo/point-record";
 import type { PointSelect } from "@/lib/drizzle/schema/points";
 
 function parsePointCoordinates(geom: string | null): { longitude: number; latitude: number } | null {
@@ -28,10 +29,12 @@ export function buildMapPointSyncPayload(point: PointSelect): Record<string, unk
     throw new Error("Marker geometry is missing or invalid.");
   }
 
+  const pointMetadata = parsePointMetadata(point.metadataJson);
   const metadata: Record<string, string> = {
     markerKind: point.markerKind ?? "physical",
     sourceMarkerId: String(point.id),
     capturedOnDevice: "true",
+    ...pointMetadata,
   };
 
   if (point.photoUri) {

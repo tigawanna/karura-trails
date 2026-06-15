@@ -8,14 +8,19 @@ import {
 import { listLocalEvents } from "@/data-access-layer/pglite/local-events";
 import { pgliteQueryKeys } from "@/data-access-layer/pglite/query-keys";
 import { flushLocalEventsToSync } from "@/features/map/lib/flush-local-events";
+import { isAdminUser, useViewer } from "@/data-access-layer/auth/viewer";
 import { useDashboardMap } from "@/routes/_dashboard/-components/DashboardPgliteShell.client";
 import { useSyncActivityStore } from "@/lib/sync/sync-activity-store";
 import { usePglite } from "@/lib/pglite/components/PgliteProvider.client";
-import { fetchUpstreamSyncEventsPreview, parseSyncEventPayload } from "@/services/sync/sync.api";
+import {
+  fetchAdminSyncEvents,
+  fetchUpstreamSyncEventsPreview,
+  parseSyncEventPayload,
+} from "@/services/sync/sync.api";
 import type { SyncEventRecord } from "@/types/sync";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { RefreshCw, Upload } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/ui/app-toast";
 
 function formatEventStatus(event: SyncEventRecord, appliedIds: Set<string>) {
   if (appliedIds.has(event.id)) {
@@ -30,6 +35,8 @@ function formatEventStatus(event: SyncEventRecord, appliedIds: Set<string>) {
 export function SyncStatusPanel() {
   const { db } = usePglite();
   const { mapId } = useDashboardMap();
+  const { viewer } = useViewer();
+  const isAdmin = isAdminUser(viewer.user);
   const queryClient = useQueryClient();
   const syncActivity = useSyncActivityStore();
   const requestSyncNow = useSyncActivityStore((state) => state.requestSyncNow);
@@ -47,8 +54,8 @@ export function SyncStatusPanel() {
       await queryClient.invalidateQueries({ queryKey: ["sync-events"] });
       toast.success(`Pushed ${result.pushed} local event(s) upstream.`);
     },
-    onError: () => {
-      toast.error("Failed to push local events.");
+    onError: (error) => {
+      toast.error(error instanceof Error ? error.message : "Failed to push local events.");
     },
   });
 
@@ -62,7 +69,9 @@ export function SyncStatusPanel() {
       const latestLocalId = await getLatestAppliedSyncEventId(db);
       const appliedIds = await getAppliedSyncEventIdSet(db);
       const appliedRows = await listAppliedSyncEvents(db, 100);
-      const upstream = await fetchUpstreamSyncEventsPreview(latestLocalId, 1, 100);
+      const upstream = isAdmin
+        ? await fetchAdminSyncEvents(latestLocalId, 1, 100)
+        : await fetchUpstreamSyncEventsPreview(latestLocalId, 1, 100);
       return { latestLocalId, appliedIds, appliedRows, upstream };
     },
     refetchInterval: syncActivity.status === "syncing" ? 2000 : 15000,
@@ -148,7 +157,9 @@ export function SyncStatusPanel() {
         <TabsContent value="upstream" className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-base-content/60">
-              Verified remote events waiting to be applied locally.
+              {isAdmin
+                ? "Remote events from the server, including mobile submissions awaiting your approval."
+                : "Verified remote events waiting to be applied locally."}
             </p>
             <Button onClick={() => requestSyncNow()} disabled={syncActivity.status === "syncing"}>
               <RefreshCw className={syncActivity.status === "syncing" ? "animate-spin" : ""} />
@@ -165,7 +176,7 @@ export function SyncStatusPanel() {
               <p className="text-xs tracking-wide text-base-content/60 uppercase">Batch progress</p>
               <p className="mt-1 text-lg font-semibold">
                 {syncActivity.status === "syncing" && syncActivity.totalPages > 0
-                  ? `Page ${syncActivity.currentPage} of ${syncActivity.totalPages}`
+                  ? `Batch ${syncActivity.currentPage} of ${syncActivity.totalPages}`
                   : "Idle"}
               </p>
             </div>
@@ -219,7 +230,9 @@ export function SyncStatusPanel() {
             </table>
             {upstreamEvents.length === 0 ? (
               <p className="p-6 text-center text-sm text-base-content/60">
-                No upstream events in view.
+                {isAdmin
+                  ? "No upstream events in view. Push from mobile, then check Administration → Review events."
+                  : "No upstream events in view."}
               </p>
             ) : null}
           </div>

@@ -3,10 +3,11 @@ import MaterialCommunityIcons from "@react-native-vector-icons/material-design-i
 import type { ComponentProps } from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { StyleSheet, View } from "react-native";
-import { Button, Chip, IconButton, Text, useTheme } from "react-native-paper";
+import { Button, IconButton, Text, useTheme } from "react-native-paper";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { LoadingIndicator } from "@/components/ui/loading-state";
+import { formatMarkerCategoryLabels, readMarkerCategories } from "@/geo/marker-categories";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
 import { markerLabel, haversineDistanceMeters, pointCoordinates } from "@/geo/nearest-marker";
 import { Spacing } from "@/theme";
@@ -34,6 +35,10 @@ interface MarkerDetailSheetProps {
   onNavigateTo?: () => void;
   onSetLocationHere?: () => void;
   onClearRoute?: () => void;
+  onDelete?: () => void;
+  onEdit?: () => void;
+  editLabel?: string;
+  deletable?: boolean;
 }
 
 function formatDistance(meters: number): string {
@@ -48,6 +53,23 @@ function formatKindLabel(kind: string | null | undefined): string {
     return "Marker";
   }
   return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
+function supplementaryFeatureLabels(marker: EnrichedRoutingPoint): string[] {
+  const selectedCategories = readMarkerCategories(marker).map((entry) =>
+    entry.replaceAll("_", " ").toLowerCase(),
+  );
+
+  return marker.featureLabels
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .filter((label) => {
+      const lower = label.toLowerCase();
+      return !selectedCategories.some(
+        (category) => lower === category || lower === `trail ${category}`,
+      );
+    });
 }
 
 export function MarkerDetailSheet({
@@ -68,11 +90,15 @@ export function MarkerDetailSheet({
   onNavigateTo,
   onSetLocationHere,
   onClearRoute,
+  onDelete,
+  onEdit,
+  editLabel = "Suggest fix",
+  deletable = false,
 }: MarkerDetailSheetProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const sheetRef = useRef<BottomSheet>(null);
-  const snapPoints = useMemo(() => ["14%", "52%"], []);
+  const snapPoints = useMemo(() => ["12%", "46%"], []);
 
   useEffect(() => {
     if (marker) {
@@ -95,12 +121,9 @@ export function MarkerDetailSheet({
 
   const label = marker ? markerLabel(marker) : null;
   const coordinates = marker ? pointCoordinates(marker) : null;
-  const featureLabels = marker?.featureLabels
-    ? marker.featureLabels
-        .split(",")
-        .map((entry) => entry.trim())
-        .filter(Boolean)
-    : [];
+  const categoryLabels = marker ? formatMarkerCategoryLabels(readMarkerCategories(marker)) : "";
+
+  const extraFeatureLabels = marker ? supplementaryFeatureLabels(marker) : [];
 
   const locationUnavailable = Boolean(locationError) && !nearKarura;
 
@@ -164,11 +187,12 @@ export function MarkerDetailSheet({
               <View style={styles.hero}>
                 <View style={styles.heroHeader}>
                   <Text
-                    variant="labelLarge"
+                    variant="labelMedium"
                     style={[styles.eyebrow, { color: colors.primary, flex: 1 }]}
                   >
                     {formatKindLabel(marker.markerKind)}
-                    {marker.category ? ` · ${marker.category.replaceAll("_", " ")}` : ""}
+                    {categoryLabels ? ` · ${categoryLabels}` : ""}
+                    {extraFeatureLabels.length > 0 ? ` · ${extraFeatureLabels.join(" · ")}` : ""}
                   </Text>
                   {dismissible ? (
                     <IconButton
@@ -180,67 +204,85 @@ export function MarkerDetailSheet({
                     />
                   ) : null}
                 </View>
-                <Text variant="headlineMedium" style={[styles.title, { color: colors.onSurface }]}>
-                  {label}
-                </Text>
-                {locationUnavailable ? (
-                  <View style={styles.locationUnavailableRow}>
+
+                <View style={styles.titleRow}>
+                  <Text
+                    variant="headlineMedium"
+                    style={[styles.title, { color: colors.onSurface, flex: 1 }]}
+                    numberOfLines={2}
+                  >
+                    {label}
+                  </Text>
+                  {locationUnavailable ? (
                     <MaterialCommunityIcons
                       name="crosshairs-off"
-                      size={18}
+                      size={20}
                       color={colors.onSurfaceVariant}
                     />
-                    <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                      {lastKnownLatitude != null && lastKnownLongitude != null
-                        ? `${lastKnownLatitude.toFixed(5)}, ${lastKnownLongitude.toFixed(5)}`
-                        : "Location unavailable"}
-                    </Text>
-                  </View>
-                ) : distanceMeters != null && nearKarura ? (
-                  <View
-                    style={[styles.distanceBadge, { backgroundColor: colors.primaryContainer }]}
-                  >
-                    <Text
-                      variant="labelLarge"
-                      style={{ color: colors.onPrimaryContainer, fontWeight: "700" }}
+                  ) : distanceMeters != null && nearKarura ? (
+                    <View
+                      style={[styles.distanceBadge, { backgroundColor: colors.primaryContainer }]}
                     >
-                      {!userSelected && distanceMeters <= 40
-                        ? "You are here"
-                        : `${formatDistance(distanceMeters)} away`}
+                      <Text
+                        variant="labelMedium"
+                        style={{ color: colors.onPrimaryContainer, fontWeight: "700" }}
+                      >
+                        {!userSelected && distanceMeters <= 40
+                          ? "You are here"
+                          : `${formatDistance(distanceMeters)} away`}
+                      </Text>
+                    </View>
+                  ) : !nearKarura ? (
+                    <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+                      Off map
                     </Text>
-                  </View>
-                ) : !nearKarura ? (
+                  ) : null}
+                </View>
+
+                {locationUnavailable ? (
                   <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
-                    Outside Karura — showing a default marker
+                    {lastKnownLatitude != null && lastKnownLongitude != null
+                      ? `${lastKnownLatitude.toFixed(5)}, ${lastKnownLongitude.toFixed(5)}`
+                      : "Location unavailable"}
                   </Text>
                 ) : null}
               </View>
 
-              {featureLabels.length > 0 ? (
-                <View style={styles.chipRow}>
-                  {featureLabels.map((featureLabel) => (
-                    <Chip key={featureLabel} compact mode="outlined">
-                      {featureLabel}
-                    </Chip>
-                  ))}
-                </View>
-              ) : null}
-
               <View style={[styles.metaCard, { backgroundColor: colors.surfaceVariant }]}>
-                <Text variant="labelMedium" style={{ color: colors.onSurfaceVariant }}>
-                  DETAILS
-                </Text>
-                <Text variant="bodyLarge" style={{ color: colors.onSurface, lineHeight: 24 }}>
-                  {[
-                    marker.nodeRole ? `Role: ${marker.nodeRole}` : null,
-                    marker.elevation != null ? `Elevation ${Math.round(marker.elevation)} m` : null,
-                    coordinates
-                      ? `${coordinates.latitude.toFixed(5)}, ${coordinates.longitude.toFixed(5)}`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join("\n")}
-                </Text>
+                {marker.elevation != null ? (
+                  <View style={styles.metaCell}>
+                    <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+                      Elevation
+                    </Text>
+                    <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: "600" }}>
+                      {Math.round(marker.elevation)} m
+                    </Text>
+                  </View>
+                ) : null}
+                {coordinates ? (
+                  <View style={styles.metaCell}>
+                    <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+                      Coordinates
+                    </Text>
+                    <Text
+                      variant="bodyMedium"
+                      style={{ color: colors.onSurface, fontWeight: "600" }}
+                      numberOfLines={1}
+                    >
+                      {coordinates.latitude.toFixed(5)}, {coordinates.longitude.toFixed(5)}
+                    </Text>
+                  </View>
+                ) : null}
+                {marker.nodeRole ? (
+                  <View style={styles.metaCell}>
+                    <Text variant="labelSmall" style={{ color: colors.onSurfaceVariant }}>
+                      Role
+                    </Text>
+                    <Text variant="bodyMedium" style={{ color: colors.onSurface, fontWeight: "600" }}>
+                      {marker.nodeRole}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
               {marker.description ? (
@@ -256,34 +298,80 @@ export function MarkerDetailSheet({
 
               {routeIncludesMarker && routeSummary ? (
                 <View style={[styles.routeBanner, { borderColor: colors.primary }]}>
-                  <Text variant="titleSmall" style={{ color: colors.onSurface, fontWeight: "700" }}>
-                    Route active
-                  </Text>
-                  <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
-                    {routeSummary.distanceLabel} · {routeSummary.stopCount} markers on path
+                  <Text variant="labelMedium" style={{ color: colors.onSurface, fontWeight: "700" }}>
+                    Route active · {routeSummary.distanceLabel} · {routeSummary.stopCount} stops
                     {routeSummary.viaCount ? ` · ${routeSummary.viaCount} via` : ""}
                     {routeSummary.blockedCount ? ` · ${routeSummary.blockedCount} avoided` : ""}
                   </Text>
                 </View>
               ) : null}
 
-              <View style={styles.actions}>
-                {onSetLocationHere ? (
-                  <Button mode="contained-tonal" icon="crosshairs-gps" onPress={onSetLocationHere}>
-                    I am here
-                  </Button>
-                ) : null}
-                {onNavigateTo ? (
-                  <Button mode="contained" icon="navigation" onPress={onNavigateTo}>
-                    Navigate here
-                  </Button>
-                ) : null}
-                {routeIncludesMarker && onClearRoute ? (
-                  <Button mode="outlined" onPress={onClearRoute}>
-                    Clear route
-                  </Button>
-                ) : null}
-              </View>
+              {onSetLocationHere || onNavigateTo ? (
+                <View style={styles.actionRow}>
+                  {onSetLocationHere ? (
+                    <Button
+                      mode="contained-tonal"
+                      icon="crosshairs-gps"
+                      onPress={onSetLocationHere}
+                      style={styles.actionButton}
+                      contentStyle={styles.actionButtonContent}
+                    >
+                      I am here
+                    </Button>
+                  ) : null}
+                  {onNavigateTo ? (
+                    <Button
+                      mode="contained"
+                      icon="navigation"
+                      onPress={onNavigateTo}
+                      style={styles.actionButton}
+                      contentStyle={styles.actionButtonContent}
+                    >
+                      Navigate
+                    </Button>
+                  ) : null}
+                </View>
+              ) : null}
+
+              {onEdit || (routeIncludesMarker && onClearRoute) || (deletable && onDelete) ? (
+                <View style={styles.actionRow}>
+                  {onEdit ? (
+                    <Button
+                      mode="outlined"
+                      icon="pencil-outline"
+                      onPress={onEdit}
+                      style={styles.actionButton}
+                      contentStyle={styles.actionButtonContent}
+                      testID="marker-detail-edit"
+                    >
+                      {editLabel}
+                    </Button>
+                  ) : null}
+                  {routeIncludesMarker && onClearRoute ? (
+                    <Button
+                      mode="outlined"
+                      onPress={onClearRoute}
+                      style={styles.actionButton}
+                      contentStyle={styles.actionButtonContent}
+                    >
+                      Clear route
+                    </Button>
+                  ) : null}
+                  {deletable && onDelete ? (
+                    <Button
+                      mode="outlined"
+                      icon="delete-outline"
+                      textColor={colors.error}
+                      onPress={onDelete}
+                      style={styles.actionButton}
+                      contentStyle={styles.actionButtonContent}
+                      testID="marker-detail-delete"
+                    >
+                      Delete
+                    </Button>
+                  ) : null}
+                </View>
+              ) : null}
             </>
           )}
         </BottomSheetScrollView>
@@ -314,14 +402,19 @@ const styles = StyleSheet.create({
     zIndex: 40,
   },
   content: {
-    paddingHorizontal: Spacing.five,
+    paddingHorizontal: Spacing.four,
     paddingTop: Spacing.one,
-    gap: Spacing.four,
+    gap: Spacing.three,
   },
   heroHeader: {
     flexDirection: "row",
     alignItems: "center",
     gap: Spacing.one,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: Spacing.two,
   },
   closeButton: {
     margin: 0,
@@ -329,7 +422,7 @@ const styles = StyleSheet.create({
     marginRight: -Spacing.two,
   },
   hero: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   eyebrow: {
     letterSpacing: 0.8,
@@ -340,38 +433,42 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     letterSpacing: -0.5,
   },
-  locationUnavailableRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: Spacing.two,
-  },
   distanceBadge: {
-    alignSelf: "flex-start",
     borderRadius: 999,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.one,
-  },
-  chipRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.two,
+    paddingHorizontal: Spacing.two,
+    paddingVertical: Spacing.half,
+    flexShrink: 0,
   },
   metaCard: {
-    borderRadius: 16,
-    padding: Spacing.four,
-    gap: Spacing.two,
+    borderRadius: 14,
+    padding: Spacing.three,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: Spacing.three,
+  },
+  metaCell: {
+    flexGrow: 1,
+    flexBasis: "45%",
+    gap: 2,
   },
   descriptionBlock: {
-    gap: Spacing.two,
+    gap: Spacing.one,
   },
   routeBanner: {
     borderWidth: 1,
-    borderRadius: 16,
-    padding: Spacing.four,
-    gap: Spacing.one,
+    borderRadius: 12,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
-  actions: {
+  actionRow: {
+    flexDirection: "row",
     gap: Spacing.two,
+  },
+  actionButton: {
+    flex: 1,
+  },
+  actionButtonContent: {
+    height: 44,
   },
   loadingContent: {
     width: "100%",

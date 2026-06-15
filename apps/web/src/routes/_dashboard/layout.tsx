@@ -5,8 +5,7 @@ import { RouterPendingComponent } from "@/lib/tanstack/router/RouterPendingCompo
 import { RouterErrorComponent } from "@/lib/tanstack/router/routerErrorComponent";
 import { AppConfig } from "@/utils/system";
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Suspense } from "react";
-import { DashboardPgliteShell } from "./-components/DashboardPgliteShell.client";
+import { lazy, Suspense } from "react";
 import { DashboardLayout } from "./-components/dashboard-sidebar/DashboardLayout";
 import {
   dashboard_account_routes,
@@ -14,7 +13,13 @@ import {
   getDashboardPrimaryRoutes,
 } from "./-components/dashboard-sidebar/dashboard_routes";
 
+const DashboardPgliteShell = lazy(async () => {
+  const module = await import("./-components/DashboardPgliteShell.client");
+  return { default: module.DashboardPgliteShell };
+});
+
 export const Route = createFileRoute("/_dashboard")({
+  ssr: false,
   pendingComponent: () => <RouterPendingComponent />,
   notFoundComponent: () => <RouterNotFoundComponent />,
   errorComponent: ({ error }) => <RouterErrorComponent error={error} />,

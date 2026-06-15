@@ -15,7 +15,7 @@ export function SyncActivityHeaderBadge() {
   return (
     <span
       className="inline-flex shrink-0 items-center gap-1 text-[11px] font-medium text-primary"
-      title="Syncing verified events"
+      title="Syncing verified events in batches"
     >
       <Loader2 className="size-3 shrink-0 animate-spin" aria-hidden />
       <span className="font-mono leading-none tabular-nums">{pageLabel}</span>

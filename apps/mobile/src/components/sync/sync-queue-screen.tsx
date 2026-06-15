@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LegendList } from "@legendapp/list/react-native";
 import { useCallback, useMemo, useState } from "react";
-import { Alert, StyleSheet, Share, View } from "react-native";
+import { showAlert, showErrorAlert } from "@/lib/ui/alert-feedback";
 import {
   Button,
   Card,
@@ -23,7 +23,7 @@ import {
 } from "@/data-access-layer/sync-queue";
 import { queryKeyPrefixes } from "@/lib/tanstack/query/client";
 import type { SyncEventRecord } from "@/lib/sync/sync.types";
-import { getSyncApiBaseUrl } from "@/services/sync/sync.api";
+import { getSyncApiBaseUrl, getSyncApiSecret } from "@/services/sync/sync.api";
 import { LoadingState } from "@/components/ui/loading-state";
 import { legendListVirtualizationProps } from "@/lib/legend-list/virtualization-props";
 import { MaxContentWidth, Spacing } from "@/theme";
@@ -107,7 +107,7 @@ function SyncQueueEventItem({
 export function SyncQueueScreen() {
   const { colors } = useTheme();
   const queryClient = useQueryClient();
-  const syncApiConfigured = getSyncApiBaseUrl() != null;
+  const syncApiConfigured = getSyncApiBaseUrl() != null && getSyncApiSecret() != null;
   const { data: events = [], isPending } = useQuery(pendingSyncEventsQueryOptions);
   const [selectedEvent, setSelectedEvent] = useState<SyncEventRecord | null>(null);
   const [editName, setEditName] = useState("");
@@ -117,13 +117,14 @@ export function SyncQueueScreen() {
   const invalidate = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: [queryKeyPrefixes.pendingSyncEvents] });
     await queryClient.invalidateQueries({ queryKey: [queryKeyPrefixes.capturedPoints] });
+    await queryClient.invalidateQueries({ queryKey: [queryKeyPrefixes.routingPoints] });
   }, [queryClient]);
 
   const pushMutation = useMutation({
     mutationFn: (eventIds?: string[]) => pushSyncEvents(eventIds),
     onSuccess: async (result) => {
       await invalidate();
-      Alert.alert(
+      showAlert(
         result.pushed > 0 ? "Sync pushed" : "Nothing to push",
         result.pushed > 0
           ? `${result.pushed} event(s) sent to the sync server.`
@@ -131,21 +132,22 @@ export function SyncQueueScreen() {
       );
     },
     onError: (error: unknown) => {
-      Alert.alert(
-        "Push failed",
-        error instanceof Error ? error.message : "Could not push sync events.",
-      );
+      showErrorAlert("Push failed", error, "Could not push sync events.");
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: removeOutboundSyncEvent,
+    meta: {
+      invalidates: [
+        [queryKeyPrefixes.pendingSyncEvents],
+        [queryKeyPrefixes.capturedPoints],
+        [queryKeyPrefixes.routingPoints],
+      ],
+    },
     onSuccess: invalidate,
     onError: (error: unknown) => {
-      Alert.alert(
-        "Remove failed",
-        error instanceof Error ? error.message : "Could not remove sync event.",
-      );
+      showErrorAlert("Remove failed", error, "Could not remove sync event.");
     },
   });
 
@@ -165,7 +167,9 @@ export function SyncQueueScreen() {
       await invalidate();
     },
     onError: (error: unknown) => {
-      setEditError(error instanceof Error ? error.message : "Could not update sync event.");
+      const message = error instanceof Error ? error.message : "Could not update sync event.";
+      console.error("[alert]", "Edit failed", message, error);
+      setEditError(message);
     },
   });
 
@@ -178,10 +182,7 @@ export function SyncQueueScreen() {
         title: "Karura Trails pending sync export",
       });
     } catch (error) {
-      Alert.alert(
-        "Export failed",
-        error instanceof Error ? error.message : "Could not export sync events.",
-      );
+      showErrorAlert("Export failed", error, "Could not export sync events.");
     }
   }, []);
 
@@ -194,9 +195,9 @@ export function SyncQueueScreen() {
   };
 
   const confirmRemove = (event: SyncEventRecord) => {
-    Alert.alert(
+    showAlert(
       "Remove from sync queue?",
-      "This removes the pending sync event. The local marker stays on your device unless you delete it separately on the map.",
+      "This removes the pending sync event and deletes the local marker from your device.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -219,8 +220,9 @@ export function SyncQueueScreen() {
           <Card style={styles.noticeCard}>
             <Card.Content>
               <Text variant="bodyMedium" style={{ color: colors.onSurfaceVariant }}>
-                EXPO_PUBLIC_SYNC_API_URL is not configured. You can still export queued events as
-                JSON and upload them manually through the web dashboard.
+                Set EXPO_PUBLIC_SYNC_API_URL and EXPO_PUBLIC_SYNC_API_SECRET in apps/mobile/.env,
+                then restart Expo. Use your computer LAN IP (not localhost) so a physical phone can
+                reach the dev server.
               </Text>
             </Card.Content>
           </Card>

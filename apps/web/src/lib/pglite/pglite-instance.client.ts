@@ -23,15 +23,43 @@ type BundledMigration = {
   sql: string[];
 };
 
+type PgliteGlobal = typeof globalThis & {
+  __karuraPgliteInitPromise?: Promise<void>;
+};
+
+const pgliteGlobal = globalThis as PgliteGlobal;
+
+const pgliteReadyListeners = new Set<() => void>();
+
+export function subscribePgliteReady(listener: () => void): () => void {
+  pgliteReadyListeners.add(listener);
+  return () => {
+    pgliteReadyListeners.delete(listener);
+  };
+}
+
+function notifyPgliteReady() {
+  for (const listener of pgliteReadyListeners) {
+    listener();
+  }
+}
+
 let initPromise: Promise<void> | null = null;
 
 export function initPgliteDb(): Promise<void> {
+  if (!initPromise) {
+    initPromise = pgliteGlobal.__karuraPgliteInitPromise ?? null;
+  }
+
   if (!initPromise) {
     initPromise = (async () => {
       await pgliteClient.waitReady;
       await db.execute(sql`CREATE EXTENSION IF NOT EXISTS postgis`);
       await migrate(db, migrations as BundledMigration[]);
+      notifyPgliteReady();
     })();
+    pgliteGlobal.__karuraPgliteInitPromise = initPromise;
   }
+
   return initPromise;
 }

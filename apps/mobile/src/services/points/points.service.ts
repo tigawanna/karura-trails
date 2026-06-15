@@ -1,19 +1,26 @@
+import { mergeMarkerCategoryMetadata, serializeMarkerCategories } from "@/geo/marker-categories";
+import { writeMarkerSyncOptOut } from "@/geo/marker-sync";
+import { getTableColumns, sql } from "drizzle-orm";
+
 import { db } from "@/lib/drizzle/client";
-import { points, type PointCategory, type PointSelect } from "@/lib/drizzle/schema";
+import { points, syncEvents, type PointCategory, type PointSelect } from "@/lib/drizzle/schema";
 import { recordPointSyncEvent } from "@/lib/sync/outbound-sync-events";
 import type { ElevationSource } from "@/services/elevation/elevation.service";
 import { inferElevationAtPoint } from "@/services/elevation/elevation.service";
+import { deleteMarker } from "@/services/points/delete-marker";
+import { assertMarkerNameIsAvailable } from "@/services/points/marker-name-availability";
 
 export interface CreateMarkerInput {
   lng: number;
   lat: number;
-  category: PointCategory;
+  categories: PointCategory[];
   name: string | null;
   description: string | null;
   elevation: number | null;
   elevationSource: ElevationSource | null;
   photoUri: string | null;
   secondaryPhotoUri: string | null;
+  syncToServer?: boolean;
 }
 
 export interface MarkerDraftCoordinates {
@@ -68,14 +75,25 @@ function buildPointGeometry(lng: number, lat: number, elevation: number | null):
 }
 
 export async function createMarker(input: CreateMarkerInput): Promise<PointSelect> {
+  await assertMarkerNameIsAvailable(input.name);
+
   const now = new Date().toISOString();
+
+  const pointReturning = {
+    ...getTableColumns(points),
+    geom: sql<string>`AsGeoJSON(${points.geom})`.as("geom"),
+  };
+
+  const { category, metadataJson: categoryMetadata } = serializeMarkerCategories(input.categories);
+  const metadataJson = writeMarkerSyncOptOut(categoryMetadata, input.syncToServer === false);
 
   const [created] = await db
     .insert(points)
     .values({
       name: input.name,
       description: input.description,
-      category: input.category,
+      category,
+      metadataJson,
       photoUri: input.photoUri,
       secondaryPhotoUri: input.secondaryPhotoUri,
       elevation: input.elevation,
@@ -84,13 +102,15 @@ export async function createMarker(input: CreateMarkerInput): Promise<PointSelec
       createdAt: now,
       updatedAt: now,
     })
-    .returning();
+    .returning(pointReturning);
 
   if (!created) {
     throw new Error("Failed to save marker");
   }
 
-  await recordPointSyncEvent(created, "create");
+  if (input.syncToServer !== false) {
+    await recordPointSyncEvent(created, "create");
+  }
 
   return created;
 }

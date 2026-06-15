@@ -53,6 +53,8 @@ export async function updateMapWorkspace(
 export function mapWorkspaceQueryOptions(db: PgliteDb, mapId: number) {
   return queryOptions({
     queryKey: pgliteQueryKeys.map(mapId),
+    enabled: mapId > 0,
+    retry: 2,
     queryFn: () => getMapWorkspace(db, mapId),
   });
 }

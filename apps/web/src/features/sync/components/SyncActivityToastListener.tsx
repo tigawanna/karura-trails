@@ -1,6 +1,6 @@
 import { useSyncActivityStore } from "@/lib/sync/sync-activity-store";
 import { useEffect, useRef } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/ui/app-toast";
 
 const SYNC_TOAST_POSITION = "bottom-left" as const;
 
@@ -24,7 +24,7 @@ export function SyncActivityToastListener() {
 
     if (currentPage === lastToastedPageRef.current) {
       toast.loading(
-        `Page ${currentPage}${totalPages > 0 ? ` of ${totalPages}` : ""} · ${remainingCount} remaining`,
+        `Batch ${currentPage}${totalPages > 0 ? ` of ${totalPages}` : ""} · ${remainingCount} remaining`,
         {
           id: syncToastId(currentPage),
           position: SYNC_TOAST_POSITION,
@@ -40,7 +40,7 @@ export function SyncActivityToastListener() {
 
     lastToastedPageRef.current = currentPage;
     toast.loading(
-      `Page ${currentPage}${totalPages > 0 ? ` of ${totalPages}` : ""} · ${remainingCount} remaining`,
+      `Batch ${currentPage}${totalPages > 0 ? ` of ${totalPages}` : ""} · ${remainingCount} remaining`,
       {
         id: syncToastId(currentPage),
         position: SYNC_TOAST_POSITION,

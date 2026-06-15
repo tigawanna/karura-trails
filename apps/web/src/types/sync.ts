@@ -55,3 +55,9 @@ export interface SyncEventRecord {
   verifiedAt: string | null;
   verifiedBy: string | null;
 }
+
+export type VerifySyncEventChanges = {
+  latitude?: number;
+  longitude?: number;
+  name?: string | null;
+};

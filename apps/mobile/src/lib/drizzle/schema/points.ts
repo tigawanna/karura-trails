@@ -52,6 +52,10 @@ export type PointCategory =
   | "cave"
   | "sign"
   | "bridge"
+  | "bench"
+  | "dustbin"
+  | "lake"
+  | "river"
   | "custom";
 
 export type PointNodeRole = "junction" | "endpoint" | "waypoint";

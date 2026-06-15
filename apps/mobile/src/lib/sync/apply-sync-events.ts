@@ -8,6 +8,8 @@ import {
   type PointNodeRole,
 } from "@/lib/drizzle/schema";
 import { markSyncEventsApplied } from "@/lib/sync/applied-sync-events";
+import { readMarkerSyncOptOut } from "@/geo/marker-sync";
+import { syncLog } from "@/lib/sync/sync-log";
 import type { SyncEventRecord } from "@/lib/sync/sync.types";
 import { and, eq, sql } from "drizzle-orm";
 
@@ -19,8 +21,12 @@ const VALID_CATEGORIES = new Set<PointCategory>([
   "bridge",
   "viewpoint",
   "water",
+  "lake",
+  "river",
   "cave",
   "rest_area",
+  "bench",
+  "dustbin",
   "sign",
   "custom",
 ]);
@@ -67,6 +73,109 @@ async function findPointIdBySourceMarkerId(
   return row?.id ?? null;
 }
 
+function isCapturedMapPointPayload(payload: Record<string, unknown>): boolean {
+  const metadata =
+    payload.metadata && typeof payload.metadata === "object"
+      ? (payload.metadata as Record<string, unknown>)
+      : null;
+  return metadata?.capturedOnDevice === "true" || metadata?.capturedOnDevice === true;
+}
+
+async function findPointIdForMapPointPayload(
+  database: DrizzleDB,
+  payload: Record<string, unknown>,
+  eventRowId: string,
+): Promise<number | null> {
+  const sourceMarkerId = parseSourceMarkerId(payload);
+  if (sourceMarkerId != null) {
+    const bySourceId = await findPointIdBySourceMarkerId(database, sourceMarkerId);
+    if (bySourceId != null) {
+      return bySourceId;
+    }
+
+    if (isCapturedMapPointPayload(payload)) {
+      const [byLocalId] = await database
+        .select({ id: points.id })
+        .from(points)
+        .where(eq(points.id, sourceMarkerId))
+        .limit(1);
+      if (byLocalId) {
+        return byLocalId.id;
+      }
+    }
+  }
+
+  const rowPointId = Number(eventRowId);
+  if (Number.isFinite(rowPointId)) {
+    const [byRowId] = await database
+      .select({ id: points.id })
+      .from(points)
+      .where(eq(points.id, rowPointId))
+      .limit(1);
+    if (byRowId) {
+      return byRowId.id;
+    }
+  }
+
+  return null;
+}
+
+async function isPointSyncOptOut(database: DrizzleDB, pointId: number): Promise<boolean> {
+  const [row] = await database
+    .select({ metadataJson: points.metadataJson })
+    .from(points)
+    .where(eq(points.id, pointId))
+    .limit(1);
+  return row ? readMarkerSyncOptOut(row.metadataJson) : false;
+}
+
+async function applyMapPointFields(
+  database: DrizzleDB,
+  pointId: number,
+  payload: Record<string, unknown>,
+) {
+  const sourceMarkerId = parseSourceMarkerId(payload);
+  const metadata =
+    payload.metadata && typeof payload.metadata === "object"
+      ? { ...(payload.metadata as Record<string, string>) }
+      : {};
+  if (sourceMarkerId != null) {
+    metadata.sourceMarkerId = String(sourceMarkerId);
+  }
+  const elevation =
+    typeof payload.elevation === "number" && Number.isFinite(payload.elevation)
+      ? payload.elevation
+      : null;
+  const now =
+    typeof payload.updatedAt === "string" ? payload.updatedAt : new Date().toISOString();
+
+  await database
+    .update(points)
+    .set({
+      ref: typeof payload.ref === "string" ? payload.ref : null,
+      name: typeof payload.name === "string" ? payload.name : null,
+      description: typeof payload.description === "string" ? payload.description : null,
+      category: normalizeCategory(payload.category),
+      nodeRole:
+        payload.nodeRole === "junction" ||
+        payload.nodeRole === "endpoint" ||
+        payload.nodeRole === "waypoint"
+          ? (payload.nodeRole as PointNodeRole)
+          : null,
+      sortOrder: typeof payload.sortOrder === "number" ? payload.sortOrder : 0,
+      parentRef: typeof payload.parentRef === "string" ? payload.parentRef : null,
+      metadataJson: JSON.stringify(metadata),
+      elevation,
+      elevationSource:
+        payload.elevationSource === "manual" || payload.elevationSource === "inferred_from_path"
+          ? payload.elevationSource
+          : null,
+      geom: geometryToString(payload.longitude, payload.latitude, elevation),
+      updatedAt: now,
+    })
+    .where(eq(points.id, pointId));
+}
+
 async function buildSourceMarkerMap(database: DrizzleDB): Promise<SourceMarkerMap> {
   const rows = await database
     .select({ id: points.id, sourceId: points.sourceId })
@@ -93,6 +202,7 @@ async function applyMapPointCreate(
   database: DrizzleDB,
   payload: Record<string, unknown>,
   sourceMarkerMap: SourceMarkerMap,
+  eventRowId: string,
 ) {
   const sourceMarkerId = parseSourceMarkerId(payload);
   if (sourceMarkerId == null || !isMapPointPayload(payload)) {
@@ -101,10 +211,14 @@ async function applyMapPointCreate(
 
   const existingId =
     sourceMarkerMap.get(sourceMarkerId) ??
-    (await findPointIdBySourceMarkerId(database, sourceMarkerId));
+    (await findPointIdForMapPointPayload(database, payload, eventRowId));
   if (existingId != null) {
     sourceMarkerMap.set(sourceMarkerId, existingId);
-    return false;
+    if (await isPointSyncOptOut(database, existingId)) {
+      return false;
+    }
+    await applyMapPointFields(database, existingId, payload);
+    return true;
   }
 
   const metadata =
@@ -146,7 +260,7 @@ async function applyMapPointCreate(
         payload.nodeRole === "waypoint"
           ? (payload.nodeRole as PointNodeRole)
           : null,
-      sourceId: sourceMarkerId,
+      sourceId: isCapturedMapPointPayload(payload) ? null : sourceMarkerId,
       sortOrder: typeof payload.sortOrder === "number" ? payload.sortOrder : 0,
       parentRef: typeof payload.parentRef === "string" ? payload.parentRef : null,
       metadataJson: JSON.stringify(metadata),
@@ -169,53 +283,26 @@ async function applyMapPointCreate(
   return true;
 }
 
-async function applyMapPointUpdate(database: DrizzleDB, payload: Record<string, unknown>) {
+async function applyMapPointUpdate(
+  database: DrizzleDB,
+  payload: Record<string, unknown>,
+  eventRowId: string,
+) {
   const sourceMarkerId = parseSourceMarkerId(payload);
   if (sourceMarkerId == null || !isMapPointPayload(payload)) {
     return false;
   }
 
-  const pointId = await findPointIdBySourceMarkerId(database, sourceMarkerId);
+  const pointId = await findPointIdForMapPointPayload(database, payload, eventRowId);
   if (pointId == null) {
     return false;
   }
 
-  const metadata =
-    payload.metadata && typeof payload.metadata === "object"
-      ? { ...(payload.metadata as Record<string, string>) }
-      : {};
-  metadata.sourceMarkerId = String(sourceMarkerId);
-  const elevation =
-    typeof payload.elevation === "number" && Number.isFinite(payload.elevation)
-      ? payload.elevation
-      : null;
+  if (await isPointSyncOptOut(database, pointId)) {
+    return false;
+  }
 
-  await database
-    .update(points)
-    .set({
-      ref: typeof payload.ref === "string" ? payload.ref : null,
-      name: typeof payload.name === "string" ? payload.name : null,
-      description: typeof payload.description === "string" ? payload.description : null,
-      category: normalizeCategory(payload.category),
-      nodeRole:
-        payload.nodeRole === "junction" ||
-        payload.nodeRole === "endpoint" ||
-        payload.nodeRole === "waypoint"
-          ? (payload.nodeRole as PointNodeRole)
-          : null,
-      sortOrder: typeof payload.sortOrder === "number" ? payload.sortOrder : 0,
-      parentRef: typeof payload.parentRef === "string" ? payload.parentRef : null,
-      metadataJson: JSON.stringify(metadata),
-      elevation,
-      elevationSource:
-        payload.elevationSource === "manual" || payload.elevationSource === "inferred_from_path"
-          ? payload.elevationSource
-          : null,
-      geom: geometryToString(payload.longitude, payload.latitude, elevation),
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(points.id, pointId));
-
+  await applyMapPointFields(database, pointId, payload);
   return true;
 }
 
@@ -346,9 +433,9 @@ export async function applySyncEvents(database: DrizzleDB, events: SyncEventReco
       didApply = await applyLandmarkTypeCreate(database, payload);
     } else if (event.tableName === "map_point") {
       if (event.action === "create") {
-        didApply = await applyMapPointCreate(database, payload, sourceMarkerMap);
+        didApply = await applyMapPointCreate(database, payload, sourceMarkerMap, event.rowId);
       } else if (event.action === "update") {
-        didApply = await applyMapPointUpdate(database, payload);
+        didApply = await applyMapPointUpdate(database, payload, event.rowId);
       } else if (event.action === "delete") {
         didApply = await applyMapPointDelete(database, event.rowId);
       }
@@ -364,6 +451,12 @@ export async function applySyncEvents(database: DrizzleDB, events: SyncEventReco
   }
 
   await markSyncEventsApplied(database, sorted, skippedIds);
+
+  syncLog("apply sync events", {
+    verified: verified.length,
+    applied,
+    skipped: skippedIds.size,
+  });
 
   return { applied, total: verified.length, skipped: skippedIds.size };
 }

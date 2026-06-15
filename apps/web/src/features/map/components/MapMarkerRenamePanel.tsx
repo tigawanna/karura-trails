@@ -22,7 +22,7 @@ import type { MarkerNeighborRecord } from "@/types/map/marker-neighbors";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCopy, Download, ListTree, RefreshCw, Upload } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/ui/app-toast";
 
 type MapMarkerRenamePanelProps = {
   db: PgliteDb;

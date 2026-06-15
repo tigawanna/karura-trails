@@ -62,6 +62,18 @@ export function inferMapPointFeatureSlugs(input: {
   if (category === "bridge" || structure === "bridge") {
     slugs.add("bridge");
   }
+  if (category === "bench") {
+    slugs.add("bench");
+  }
+  if (category === "dustbin") {
+    slugs.add("dustbin");
+  }
+  if (category === "lake") {
+    slugs.add("lake");
+  }
+  if (category === "river") {
+    slugs.add("river");
+  }
   if (category === "gate") {
     slugs.add("gate");
   }
@@ -111,6 +123,15 @@ export function inferMapPointFeatureSlugs(input: {
 
   if (haystackIncludes(label, ["bench"])) {
     slugs.add("bench");
+  }
+  if (haystackIncludes(label, ["dustbin", "bin", "trash"])) {
+    slugs.add("dustbin");
+  }
+  if (haystackIncludes(label, ["lake"])) {
+    slugs.add("lake");
+  }
+  if (haystackIncludes(label, ["river"])) {
+    slugs.add("river");
   }
   if (haystackIncludes(label, ["waterfall", "falls"])) {
     slugs.add("waterfall");

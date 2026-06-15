@@ -1,5 +1,6 @@
 import { ErrorState } from "@/components/ui/error-state";
 import { LoadingState } from "@/components/ui/loading-state";
+import { Button } from "react-native-paper";
 import { landmarkTypesQueryOptions } from "@/data-access-layer/landmark-types";
 import {
   enrichedRoutingPointsQueryOptions,
@@ -12,6 +13,7 @@ import {
 import migrations from "@/drizzle/migrations";
 import { queryClient } from "@/lib/tanstack/query/client";
 import { bootstrapSyncData } from "@/lib/sync/bootstrap-sync-data";
+import { reloadMarkerData } from "@/lib/sync/reload-marker-data";
 import { migrate } from "drizzle-orm/op-sqlite/migrator";
 import { useEffect, useState } from "react";
 import { db, ensureSpatialMetadata, resetLocalDatabase } from "./client";
@@ -79,6 +81,28 @@ export function InitDatabase({ children }: InitDatabaseProps) {
   const [error, setError] = useState<Error | null>(null);
   const [ready, setReady] = useState(false);
   const [initError, setInitError] = useState<Error | null>(null);
+  const [retrying, setRetrying] = useState(false);
+
+  const retryInit = async () => {
+    setRetrying(true);
+    try {
+      await reloadMarkerData(db);
+      await Promise.all([
+        queryClient.prefetchQuery(enrichedRoutingPointsQueryOptions),
+        queryClient.prefetchQuery(neighborLinksQueryOptions),
+        queryClient.prefetchQuery(landmarkTypesQueryOptions),
+        queryClient.prefetchQuery(pendingSyncEventsQueryOptions),
+        queryClient.prefetchQuery(pendingSyncCountQueryOptions),
+      ]);
+      setInitError(null);
+      setReady(true);
+    } catch (err) {
+      const nextError = err instanceof Error ? err : new Error(String(err));
+      setInitError(nextError);
+    } finally {
+      setRetrying(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -132,6 +156,18 @@ export function InitDatabase({ children }: InitDatabaseProps) {
         title="Database Init Failed"
         message={initError.message}
         testID="init-db-init-error"
+        action={
+          <Button
+            mode="contained"
+            icon="database-refresh"
+            loading={retrying}
+            disabled={retrying}
+            onPress={() => void retryInit()}
+            testID="init-db-retry-load"
+          >
+            Reload map data
+          </Button>
+        }
       />
     );
   }

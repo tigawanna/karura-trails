@@ -85,7 +85,29 @@ async function applyMapPointCreate(
     (await findPointIdBySourceMarkerId(db, mapId, sourceMarkerId));
   if (existingId != null) {
     sourceMarkerMap.set(sourceMarkerId, existingId);
-    return false;
+    const metadata = { ...(payload.metadata as Record<string, string> | undefined) };
+    metadata.sourceMarkerId = String(sourceMarkerId);
+    await db
+      .update(mapPointTable)
+      .set({
+        ref: typeof payload.ref === "string" ? payload.ref : null,
+        name: typeof payload.name === "string" ? payload.name : null,
+        category: payload.category,
+        nodeRole: (payload.nodeRole as MapPointNodeRole | null) ?? null,
+        location: { x: payload.longitude, y: payload.latitude },
+        elevation: typeof payload.elevation === "number" ? payload.elevation : null,
+        elevationSource:
+          payload.elevationSource === "manual" || payload.elevationSource === "inferred_from_path"
+            ? payload.elevationSource
+            : null,
+        description: typeof payload.description === "string" ? payload.description : null,
+        parentRef: typeof payload.parentRef === "string" ? payload.parentRef : null,
+        sortOrder: typeof payload.sortOrder === "number" ? payload.sortOrder : 0,
+        metadata,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(mapPointTable.id, existingId), eq(mapPointTable.mapId, mapId)));
+    return true;
   }
 
   const metadata = { ...(payload.metadata as Record<string, string> | undefined) };
@@ -255,21 +277,25 @@ async function applyLandmarkTypeCreate(
 }
 
 async function applyMapUpdate(db: PgliteDb, mapId: number, payload: Record<string, unknown>) {
-  await updateMapWorkspace(db, mapId, {
-    locationQuery: typeof payload.locationQuery === "string" ? payload.locationQuery : undefined,
-    mapCenterLat: typeof payload.mapCenterLat === "number" ? payload.mapCenterLat : undefined,
-    mapCenterLng: typeof payload.mapCenterLng === "number" ? payload.mapCenterLng : undefined,
-    mapZoom: typeof payload.mapZoom === "number" ? payload.mapZoom : undefined,
-  });
+  try {
+    await updateMapWorkspace(db, mapId, {
+      locationQuery: typeof payload.locationQuery === "string" ? payload.locationQuery : undefined,
+      mapCenterLat: typeof payload.mapCenterLat === "number" ? payload.mapCenterLat : undefined,
+      mapCenterLng: typeof payload.mapCenterLng === "number" ? payload.mapCenterLng : undefined,
+      mapZoom: typeof payload.mapZoom === "number" ? payload.mapZoom : undefined,
+    });
 
-  if (typeof payload.name === "string" && payload.name.trim()) {
-    await db
-      .update(mapTable)
-      .set({ name: payload.name.trim(), updatedAt: new Date() })
-      .where(eq(mapTable.id, mapId));
+    if (typeof payload.name === "string" && payload.name.trim()) {
+      await db
+        .update(mapTable)
+        .set({ name: payload.name.trim(), updatedAt: new Date() })
+        .where(eq(mapTable.id, mapId));
+    }
+
+    return true;
+  } catch {
+    return false;
   }
-
-  return true;
 }
 
 export async function applySyncEvents(db: PgliteDb, mapId: number, events: SyncEventRecord[]) {

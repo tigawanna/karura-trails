@@ -55,6 +55,25 @@ export async function getLatestAppliedSyncEventId(database: DrizzleDB): Promise<
   return row?.id ?? null;
 }
 
+export async function countSkippedAppliedSyncEvents(database: DrizzleDB): Promise<number> {
+  const rows = await database.all<{ c: number }>(sql`
+    SELECT COUNT(*) AS c
+    FROM applied_sync_events
+    WHERE skipped = 1
+  `);
+  return rows[0]?.c ?? 0;
+}
+
+export async function clearSkippedAppliedSyncEvents(database: DrizzleDB): Promise<number> {
+  const before = await countSkippedAppliedSyncEvents(database);
+  if (before === 0) {
+    return 0;
+  }
+
+  await database.delete(appliedSyncEvents).where(eq(appliedSyncEvents.skipped, true));
+  return before;
+}
+
 export async function markSyncEventsApplied(
   database: DrizzleDB,
   events: SyncEventRecord[],

@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useRouter } from "@tanstack/react-router";
 import { useForm } from "react-hook-form";
-import { toast } from "sonner";
+import { toast } from "@/lib/ui/app-toast";
 import { z } from "zod";
 import { Route } from "../index";
 

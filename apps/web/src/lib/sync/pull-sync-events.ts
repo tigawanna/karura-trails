@@ -23,24 +23,29 @@ export async function pullSyncEvents({ db, mapId, queryClient }: PullSyncEventsI
 
   let cursor = await getLatestAppliedSyncEventId(db);
   let hasMore = true;
-  let page = 0;
+  let batchNumber = 0;
   let totalApplied = 0;
   let totalProcessed = 0;
 
   try {
     while (hasMore) {
-      const response = await fetchSyncEventsPull(cursor, page + 1, POLL_BATCH_LIMIT);
-      page = response.page;
+      const response = await fetchSyncEventsPull(cursor, 1, POLL_BATCH_LIMIT);
 
       if (response.events.length > 0) {
+        batchNumber += 1;
         const result = await applySyncEvents(db, mapId, response.events);
         totalApplied += result.applied;
         totalProcessed += response.events.length;
         cursor = response.nextCursor ?? response.events[response.events.length - 1]?.id ?? cursor;
 
+        const estimatedTotalBatches =
+          response.hasMore && response.perPage > 0
+            ? batchNumber + Math.ceil(response.remainingCount / response.perPage)
+            : batchNumber;
+
         store.updateProgress({
-          currentPage: response.page,
-          totalPages: response.totalPages,
+          currentPage: batchNumber,
+          totalPages: estimatedTotalBatches,
           perPage: response.perPage,
           totalCount: response.totalCount,
           remainingCount: response.remainingCount,
@@ -49,6 +54,8 @@ export async function pullSyncEvents({ db, mapId, queryClient }: PullSyncEventsI
           eventsProcessed: totalProcessed,
           eventsApplied: totalApplied,
         });
+      } else {
+        break;
       }
 
       hasMore = response.hasMore;

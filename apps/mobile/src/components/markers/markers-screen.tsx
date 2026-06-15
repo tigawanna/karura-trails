@@ -2,7 +2,7 @@ import { LegendList } from "@legendapp/list/react-native";
 import { useRouter } from "expo-router";
 import { useCallback, useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
-import { Card, Chip, Searchbar, Text, useTheme } from "react-native-paper";
+import { Card, Chip, IconButton, Searchbar, Text, useTheme } from "react-native-paper";
 import { useQuery } from "@tanstack/react-query";
 
 import { ClearSearchFiltersButton } from "@/components/common/clear-search-filters-button";
@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/ui/loading-state";
 import { landmarkTypesQueryOptions } from "@/data-access-layer/landmark-types";
 import { enrichedRoutingPointsQueryOptions } from "@/data-access-layer/routing-graph";
 import type { EnrichedRoutingPoint } from "@/geo/point-record";
+import { useMarkerLoadStatus, useReloadMarkerData } from "@/hooks/use-resume-marker-load";
 import { markerListKey, useMarkersFilter } from "@/hooks/use-markers-filter";
 import { legendListVirtualizationProps } from "@/lib/legend-list/virtualization-props";
 import { MaxContentWidth, Spacing } from "@/theme";
@@ -77,6 +78,8 @@ export function MarkersScreen() {
   const [activeFeatureSlugs, setActiveFeatureSlugs] = useState<string[]>([]);
 
   const { markers, totalCount, isLoading } = useMarkersFilter(searchQuery, activeFeatureSlugs);
+  const statusQuery = useMarkerLoadStatus();
+  const reloadMutation = useReloadMarkerData();
 
   const filterChips = useMemo(
     () => landmarkCatalog.filter((entry) => entry.slug.trim().length > 0),
@@ -124,7 +127,21 @@ export function MarkersScreen() {
             onPress={clearAllFilters}
             testID="markers-clear-all"
           />
+          <IconButton
+            icon="database-refresh"
+            accessibilityLabel="Reload map data"
+            loading={reloadMutation.isPending}
+            disabled={reloadMutation.isPending}
+            onPress={() => reloadMutation.mutate()}
+            testID="markers-load-button"
+          />
         </View>
+        {statusQuery.data?.needsAttention ? (
+          <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+            Some marker links may be incomplete. Reload map data to wipe and replay the saved
+            payloads.
+          </Text>
+        ) : null}
         <Searchbar
           placeholder="Search markers…"
           value={searchQuery}

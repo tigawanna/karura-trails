@@ -9,10 +9,12 @@ type SettingsStoreType = {
   theme: "dark" | "light" | null;
   colorScheme: CustomThemeKey | null;
   dynamicColors: boolean;
+  expoAdminMode: boolean;
   toggleDynamicColors: () => void;
   toggleTheme: () => void;
   setTheme: (theme: "dark" | "light" | null) => void;
   setColorScheme: (scheme: CustomThemeKey | null) => void;
+  setExpoAdminMode: (enabled: boolean) => void;
 };
 
 export const useSettingsStore = create<SettingsStoreType>()(
@@ -21,6 +23,7 @@ export const useSettingsStore = create<SettingsStoreType>()(
       theme: null,
       colorScheme: null,
       dynamicColors: true,
+      expoAdminMode: false,
 
       toggleDynamicColors: () =>
         set((state) => ({
@@ -46,6 +49,8 @@ export const useSettingsStore = create<SettingsStoreType>()(
             dynamicColors: nextDynamicColors,
           };
         }),
+
+      setExpoAdminMode: (enabled) => set({ expoAdminMode: enabled }),
     }),
     {
       name: "karura-app-settings",
@@ -54,6 +59,7 @@ export const useSettingsStore = create<SettingsStoreType>()(
         theme: state.theme,
         colorScheme: state.colorScheme,
         dynamicColors: state.dynamicColors,
+        expoAdminMode: state.expoAdminMode,
       }),
     },
   ),

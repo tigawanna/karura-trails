@@ -58,12 +58,13 @@ import {
 import { filterMapPointsForMapDisplay } from "@/lib/map/filter-map-points-for-map-display";
 import { MAP_POINT_FOCUS_ZOOM, type MapHandle } from "@/lib/map/map-handle";
 import { usePglite } from "@/lib/pglite/components/PgliteProvider.client";
+import { useDashboardMap } from "@/routes/_dashboard/-components/DashboardPgliteShell.client";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { ArrowLeft, ExternalLink, Table2, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/ui/app-toast";
 import { Group, Panel, Separator } from "react-resizable-panels";
 
 type MapExplorerPageProps = {
@@ -74,6 +75,7 @@ type MapExplorerPageProps = {
 export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPageProps) {
   const isWorkspace = variant === "workspace";
   const { db } = usePglite();
+  const { refreshKaruraMap } = useDashboardMap();
   const queryClient = useQueryClient();
   const mapHandleRef = useRef<MapHandle | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -349,6 +351,16 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
     shortcutsOpen,
   ]);
 
+  useEffect(() => {
+    if (!mapQuery.isError) {
+      return;
+    }
+
+    void refreshKaruraMap()
+      .then(() => mapQuery.refetch())
+      .catch(() => undefined);
+  }, [mapQuery.isError, refreshKaruraMap]);
+
   useMapExplorerHotkeys({
     enabled: Boolean(workspace),
     shortcutsOpen,
@@ -499,6 +511,27 @@ export function MapExplorerPage({ mapId, variant = "explorer" }: MapExplorerPage
       trails,
     });
     downloadJsonExport(`karura-map-bootstrap-${workspace.id}.json`, payload);
+  }
+
+  if (mapQuery.isError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+        <p className="text-sm text-base-content/70">
+          {mapQuery.error instanceof Error
+            ? mapQuery.error.message
+            : "Could not load map workspace."}
+        </p>
+        <button
+          type="button"
+          className="btn btn-sm btn-primary"
+          onClick={() => {
+            void refreshKaruraMap().then(() => mapQuery.refetch());
+          }}
+        >
+          Reload map
+        </button>
+      </div>
+    );
   }
 
   if (!workspace) {

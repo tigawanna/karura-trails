@@ -8,7 +8,7 @@ import type { MapLandmarkTypeRecord } from "@/types/map/landmark-types";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "@/lib/ui/app-toast";
 
 type MapLandmarkTypesTableProps = {
   db: PgliteDb;

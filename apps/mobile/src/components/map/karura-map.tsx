@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NativeSyntheticEvent } from "react-native";
 import { StyleSheet, useColorScheme, View } from "react-native";
 import type { PressEvent, ViewStateChangeEvent } from "@maplibre/maplibre-react-native";
@@ -21,6 +21,7 @@ import { KARURA_FOREST_CENTER, KARURA_DEFAULT_ZOOM } from "@/geo/karura-bounds";
 import { normalizeMapColorScheme, resolveMapStyle } from "@/lib/map-libre/map-style";
 
 const MARKER_HIT_RADIUS_METERS = 35;
+const CAPTURED_MARKER_HIT_RADIUS_METERS = 30;
 const FOCUS_MARKER_ZOOM = 17.5;
 const FOLLOW_USER_ZOOM = 17;
 
@@ -36,7 +37,7 @@ interface KaruraMapProps {
   rotateMapToHeading?: boolean;
   recenterKey?: number;
   enableMarkerCapture?: boolean;
-  onLongPress?: (lng: number, lat: number) => void;
+  onLongPress?: (lng: number, lat: number, nearbyMarkerId: number | null) => void;
   onMarkerPress?: (pointId: number) => void;
   onMarkerLongPress?: (pointId: number) => void;
   onUserInteraction?: () => void;
@@ -67,6 +68,7 @@ export function KaruraMap({
   const [mapBearing, setMapBearing] = useState(0);
   const [viewportZoom, setViewportZoom] = useState<number | null>(null);
   const [hasUserViewport, setHasUserViewport] = useState(false);
+  const previousFollowUserRef = useRef(followUserLocation);
   const { enrichedPoints, pointsById, isLoading: graphLoading } = useRoutingGraphData();
   const location = userLocation ?? fallbackLocation?.coords ?? null;
 
@@ -75,11 +77,41 @@ export function KaruraMap({
     [enrichedPoints, isNavigating],
   );
 
+  const capturedPointsById = useMemo(() => {
+    const index = new globalThis.Map<number, PointWithGeometry>();
+    for (const point of capturedPoints) {
+      index.set(point.id, point);
+    }
+    return index;
+  }, [capturedPoints]);
+
   useEffect(() => {
     setMapReady(false);
   }, [mapStyle]);
 
-  const focusPoint = focusPointId != null ? pointsById.get(focusPointId) : null;
+  useEffect(() => {
+    if (focusPointId != null) {
+      setHasUserViewport(false);
+    }
+  }, [focusPointId]);
+
+  useEffect(() => {
+    if (recenterKey > 0) {
+      setHasUserViewport(false);
+    }
+  }, [recenterKey]);
+
+  useEffect(() => {
+    if (followUserLocation && !previousFollowUserRef.current) {
+      setHasUserViewport(false);
+    }
+    previousFollowUserRef.current = followUserLocation;
+  }, [followUserLocation]);
+
+  const focusPoint =
+    focusPointId != null
+      ? (pointsById.get(focusPointId) ?? capturedPointsById.get(focusPointId) ?? null)
+      : null;
 
   const shouldRotateMapToHeading =
     rotateMapToHeading && followUserLocation && userHeading != null && Number.isFinite(userHeading);
@@ -94,13 +126,13 @@ export function KaruraMap({
       };
     }
 
-    if (focusPoint) {
+    if (focusPoint && !hasUserViewport) {
       const geometry = geomParse(focusPoint.geom);
       const coordinates = geometry?.coordinates;
       if (coordinates && typeof coordinates[0] === "number" && typeof coordinates[1] === "number") {
         return {
           center: [coordinates[0], coordinates[1]] as [number, number],
-          zoom: viewportZoom ?? FOCUS_MARKER_ZOOM,
+          zoom: FOCUS_MARKER_ZOOM,
           duration: mapReady ? 700 : 0,
         };
       }
@@ -141,6 +173,16 @@ export function KaruraMap({
   const effectiveMapBearing =
     shouldRotateMapToHeading && userHeading != null ? userHeading : mapBearing;
 
+  const handleRegionWillChange = useCallback(
+    (event: NativeSyntheticEvent<ViewStateChangeEvent>) => {
+      if (event.nativeEvent.userInteraction) {
+        setHasUserViewport(true);
+      }
+      onUserInteraction?.();
+    },
+    [onUserInteraction],
+  );
+
   const handleRegionIsChanging = useCallback(
     (event: NativeSyntheticEvent<ViewStateChangeEvent>) => {
       setMapBearing(event.nativeEvent.bearing);
@@ -153,15 +195,39 @@ export function KaruraMap({
     const nextZoom = event.nativeEvent.zoom;
     if (Number.isFinite(nextZoom)) {
       setViewportZoom(nextZoom);
-      setHasUserViewport(true);
     }
   }, []);
 
   const resolveMarkerAtCoordinate = useCallback(
     (latitude: number, longitude: number) => {
-      return findNearestMarker(visibleRoutingPoints, latitude, longitude, MARKER_HIT_RADIUS_METERS);
+      const routingHit = findNearestMarker(
+        visibleRoutingPoints,
+        latitude,
+        longitude,
+        MARKER_HIT_RADIUS_METERS,
+      );
+      const capturedHit =
+        capturedPoints.length > 0
+          ? findNearestMarker(
+              capturedPoints,
+              latitude,
+              longitude,
+              CAPTURED_MARKER_HIT_RADIUS_METERS,
+            )
+          : null;
+
+      if (!routingHit && !capturedHit) {
+        return null;
+      }
+      if (!routingHit) {
+        return capturedHit;
+      }
+      if (!capturedHit) {
+        return routingHit;
+      }
+      return capturedHit.distanceMeters <= routingHit.distanceMeters ? capturedHit : routingHit;
     },
-    [visibleRoutingPoints],
+    [capturedPoints, visibleRoutingPoints],
   );
 
   const handlePress = useCallback(
@@ -181,14 +247,12 @@ export function KaruraMap({
       onUserInteraction?.();
       const [longitude, latitude] = event.nativeEvent.lngLat;
       const hit = resolveMarkerAtCoordinate(latitude, longitude);
-      if (hit) {
-        if (onMarkerLongPress) {
-          onMarkerLongPress(hit.marker.id);
-        }
+      if (enableMarkerCapture) {
+        onLongPress?.(longitude, latitude, hit?.marker.id ?? null);
         return;
       }
-      if (enableMarkerCapture) {
-        onLongPress?.(longitude, latitude);
+      if (hit) {
+        onMarkerLongPress?.(hit.marker.id);
       }
     },
     [
@@ -214,7 +278,7 @@ export function KaruraMap({
           onDidFinishLoadingMap={() => setMapReady(true)}
           onPress={handlePress}
           onLongPress={handleLongPress}
-          onRegionWillChange={onUserInteraction}
+          onRegionWillChange={handleRegionWillChange}
           onRegionIsChanging={handleRegionIsChanging}
           onRegionDidChange={handleRegionDidChange}
         >

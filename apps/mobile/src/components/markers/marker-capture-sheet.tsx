@@ -1,19 +1,19 @@
 import { Image } from "expo-image";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import {
   Button,
-  Chip,
   HelperText,
   IconButton,
   Modal,
   Portal,
+  Switch,
   Text,
   TextInput,
   useTheme,
 } from "react-native-paper";
 
-import type { PointCategory } from "@/lib/drizzle/schema/points";
+import { MarkerCategoryPicker } from "@/components/markers/marker-category-picker";
 import { useMarkerCapture, type MarkerCaptureDraft } from "@/hooks/use-marker-capture";
 import { Spacing } from "@/theme";
 
@@ -25,17 +25,6 @@ interface MarkerCaptureSheetProps {
   onUseGps: () => void;
 }
 
-const CATEGORY_OPTIONS: { value: PointCategory; label: string }[] = [
-  { value: "junction", label: "Junction" },
-  { value: "gate", label: "Gate" },
-  { value: "viewpoint", label: "Viewpoint" },
-  { value: "water", label: "Water" },
-  { value: "cave", label: "Cave" },
-  { value: "rest_area", label: "Rest area" },
-  { value: "sign", label: "Sign" },
-  { value: "custom", label: "Custom" },
-];
-
 export function MarkerCaptureSheet({
   visible,
   initialDraft,
@@ -45,6 +34,12 @@ export function MarkerCaptureSheet({
 }: MarkerCaptureSheetProps) {
   const { colors } = useTheme();
   const capture = useMarkerCapture({ initialDraft, onSaved });
+
+  useEffect(() => {
+    if (capture.errorMessage) {
+      console.log("[MarkerCaptureSheet] save error:", capture.errorMessage);
+    }
+  }, [capture.errorMessage]);
 
   const handleUseGps = () => {
     onUseGps();
@@ -120,20 +115,22 @@ export function MarkerCaptureSheet({
             {elevationHint}
           </HelperText>
 
-          <Text variant="labelLarge" style={{ color: colors.onSurface }}>
-            Category
-          </Text>
-          <View style={styles.chipRow}>
-            {CATEGORY_OPTIONS.map((option) => (
-              <Chip
-                key={option.value}
-                selected={capture.category === option.value}
-                onPress={() => capture.setCategory(option.value)}
-                style={styles.chip}
-              >
-                {option.label}
-              </Chip>
-            ))}
+          <MarkerCategoryPicker selected={capture.categories} onChange={capture.setCategories} />
+
+          <View style={styles.localOnlyRow}>
+            <View style={styles.localOnlyCopy}>
+              <Text variant="labelLarge" style={{ color: colors.onSurface }}>
+                Keep on device only
+              </Text>
+              <Text variant="bodySmall" style={{ color: colors.onSurfaceVariant }}>
+                This marker stays on your phone and is not sent for admin review.
+              </Text>
+            </View>
+            <Switch
+              value={capture.keepLocalOnly}
+              onValueChange={capture.setKeepLocalOnly}
+              testID="marker-capture-keep-local-only"
+            />
           </View>
 
           <TextInput
@@ -218,13 +215,15 @@ const styles = StyleSheet.create({
   halfInput: {
     flex: 1,
   },
-  chipRow: {
+  localOnlyRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: Spacing.one,
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: Spacing.two,
   },
-  chip: {
-    marginBottom: Spacing.half,
+  localOnlyCopy: {
+    flex: 1,
+    gap: Spacing.one,
   },
   photoHeader: {
     flexDirection: "row",

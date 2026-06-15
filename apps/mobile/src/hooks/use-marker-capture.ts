@@ -31,10 +31,11 @@ export function useMarkerCapture({ initialDraft, onSaved }: UseMarkerCaptureOpti
   const [gpsAltitude] = useState<number | null>(() => initialDraft?.gpsAltitude ?? null);
   const [manualElevation, setManualElevation] = useState("");
   const [elevationTouched, setElevationTouched] = useState(false);
-  const [category, setCategory] = useState<PointCategory>(DEFAULT_CATEGORY);
+  const [categories, setCategories] = useState<PointCategory[]>([DEFAULT_CATEGORY]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [photoUris, setPhotoUris] = useState<string[]>([]);
+  const [keepLocalOnly, setKeepLocalOnly] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const parsedCoordinates = useMemo((): MarkerDraftCoordinates | null => {
@@ -109,13 +110,14 @@ export function useMarkerCapture({ initialDraft, onSaved }: UseMarkerCaptureOpti
       await createMarker({
         lng: parsedCoordinates.lng,
         lat: parsedCoordinates.lat,
-        category,
+        categories,
         name: name.trim() || null,
         description: description.trim() || null,
         elevation: elevationTouched ? elevationValue : resolvedElevation.elevation,
         elevationSource: elevationTouched ? "manual" : resolvedElevation.elevationSource,
         photoUri: photoUris[0] ?? null,
         secondaryPhotoUri: photoUris[1] ?? null,
+        syncToServer: !keepLocalOnly,
       });
     },
     meta: {
@@ -135,7 +137,7 @@ export function useMarkerCapture({ initialDraft, onSaved }: UseMarkerCaptureOpti
     lng,
     lat,
     gpsAltitude,
-    category,
+    categories,
     name,
     description,
     photoUris,
@@ -144,9 +146,11 @@ export function useMarkerCapture({ initialDraft, onSaved }: UseMarkerCaptureOpti
     elevationTouched,
     errorMessage,
     isSaving: saveMutation.isPending,
+    keepLocalOnly,
+    setKeepLocalOnly,
     setLng,
     setLat,
-    setCategory,
+    setCategories,
     setName,
     setDescription,
     setManualElevation: (value: string) => {

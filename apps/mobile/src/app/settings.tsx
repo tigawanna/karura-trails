@@ -2,6 +2,8 @@ import { ScrollView, StyleSheet, View } from "react-native";
 import { Divider, List, Text, useTheme } from "react-native-paper";
 
 import { AppearanceSettings } from "@/components/settings/appearance-settings";
+import { MarkerLoadSettings } from "@/components/settings/marker-load-settings";
+import { AdminModeSettings } from "@/components/settings/admin-mode-settings";
 import { LocationSpoofSettings } from "@/components/dev/location-spoof-settings";
 import { isDevBuild } from "@/lib/dev/is-dev-build";
 import { MaxContentWidth, Spacing } from "@/theme";
@@ -18,6 +20,8 @@ export default function SettingsScreen() {
       showsVerticalScrollIndicator={false}>
       <AppearanceSettings />
 
+      <MarkerLoadSettings />
+
       {isDevBuild() ? (
         <View style={styles.devSection}>
           <Divider />
@@ -26,6 +30,7 @@ export default function SettingsScreen() {
             Tools for testing the app without being in the forest.
           </Text>
           <LocationSpoofSettings />
+          <AdminModeSettings />
         </View>
       ) : null}
     </ScrollView>
